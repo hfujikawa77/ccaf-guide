@@ -1,22 +1,86 @@
 ---
 title: Anti-patterns 完全集
-description: CCA-F 試験の誤答選択肢として頻出する Anti-patterns をドメイン別に網羅。
+description: CCA-F 試験の誤答選択肢として頻出する Anti-patterns をドメイン別に網羅。試験直前の最終確認 10 点付き。
 ---
+
+import { Callout } from 'nextra/components'
 
 # Anti-patterns 完全集（試験の誤答選択肢対策）
 
 試験の誤答選択肢は「知識があると選びやすい」anti-pattern で設計されています。ドメイン別に整理します。
 
-> このページのコンテンツは Step 3 で移植予定です。
+## Domain 1: Agentic
 
-## Domain 1
+- 自然言語シグナル（「完了しました」）でアジェンティックループ終了を判定
+- 固定の繰り返し回数を主要停止機構にする
+- アシスタントのテキストコンテンツ有無を完了指標にする
+- prompt 指示だけで金融操作の順序を強制する（非ゼロ失敗率）
+- サブエージェント同士を直接通信させる（コーディネーターを経由しない）
+- タスク分解が狭すぎてトピックの一部しかカバーしない
+- コーディネーターがすべての状況で全パイプラインを通す（動的選択をしない）
+- **独立タスクを別ターンで順次実行する（並列化機会の損失）**
+- **サブエージェントが必要な情報をプロンプトに含めない（コンテキスト自動継承の誤想定）**
+- **サブエージェント description が最小限で、コーディネーターが選択を誤る**
 
-## Domain 2
+## Domain 2: Tool / MCP
 
-## Domain 3
+- ツール description が最小限（"Retrieves information" 等）
+- 汎用エラー "Operation failed" を返す（構造化情報なし）
+- タイムアウト（access failure）を empty success として返す
+- 1 エージェントに 18 個のツールを与える
+- 合成エージェントに Web 検索ツールを与える（専門外・誤用の原因）
+- チーム共有設定を `~/.claude.json` に置く（個人スコープ）
+- **1 つの巨大ツールで action 引数で分岐させる（権限管理が不可能）**
+- **削除操作を含むツールに固有の hook を設定しない（事故の温床）**
 
-## Domain 4
+## Domain 3: Claude Code
 
-## Domain 5
+- チームへのコマンド配布を `~/.claude/commands/` に置く
+- ディレクトリ横断ルールにサブディレクトリ CLAUDE.md を使う（glob パターン不可）
+- 単一ファイルのバグ修正に Plan mode を使う（オーバーキル）
+- CI/CD で `-p` フラグなしに Claude Code を実行（ハングする）
+- `CLAUDE_HEADLESS=true` を使う（存在しない）
+- `--batch` フラグを使う（存在しない）
+- コードを生成した同じセッションでレビューさせる（認知バイアス）
+- **`allowed-tools` でツールをブロックしようとする（事前承認機能であり、ブロック機能ではない）**
+- **`@import path/to/file` と書く（正しくは `@path/to/file` のみ）**
+- **「保存後に prettier 実行」を CLAUDE.md に書く（決定論的な PostToolUse hook で実装すべき）**
+- **個人 override 設定を `.claude/CLAUDE.md` に書く（チームを汚染する。`CLAUDE.local.md` を使うべき）**
+
+## Domain 4: Prompt Engineering
+
+- "be conservative" 等の曖昧な精度指示（効果なし）
+- 情報が存在しないかもしれないフィールドを required にする（幻覚の原因）
+- pre-merge ブロッキングチェックに Batch API を使う（SLA 保証なし）
+- 情報がそもそも存在しない場合にリトライを繰り返す（効果なし）
+- 大量ファイルを一度にレビューさせる（attention dilution）
+- コード生成インスタンスに自分でレビューさせる（認知バイアス）
+- **`tool_use` を含むワークフローを Batch に投げる（バッチではエージェンティックループが展開できない）**
+
+## Domain 5: Context
+
+- 感情スコアでエスカレーション判断する（複雑度と無相関）
+- 自己報告型信頼スコアでエスカレーション判断する（キャリブレーション不良）
+- ツール出力を全フィールドそのままコンテキストに蓄積する
+- エラーを empty success として返す
+- 単一サブエージェントの失敗でワークフロー全体を終了させる
+- 複数ソースが競合する場合に一方を任意選択する（provenance 消失）
+- 「大きなコンテキストウィンドウ」で attention dilution を解決しようとする
+- **`/compact` に頼って transactional facts（金額・ID・日付）を要約に流す**
+- **permission error をリトライする（リトライ可能タイプではない）**
+- **「情報がドキュメントに存在しない」ケースで何度もリトライする**
 
 ## 試験直前の最終確認 — この 10 点を確実に
+
+<Callout type="warning" emoji="🎯">
+1. `stop_reason` の値：`"tool_use"` → 継続、`"end_turn"` → 終了
+2. CLAUDE.md の 4 階層：user（`~/.claude/`）/ project（`.claude/`）/ project-local（`CLAUDE.local.md`）/ directory（サブディレクトリ）
+3. `tool_choice` の 3 設定：auto / any / forced — 違いと使いどころ
+4. プログラマティック強制 vs プロンプト指示の判断基準
+5. Batch API が適さないワークフロー（ブロッキング・SLA 必要・**エージェンティックループ含む**）
+6. サブエージェントはコンテキストを自動継承しない（[D1.4](/d1-agentic#1-4-サブエージェントへのコンテキスト渡し)）
+7. 感情スコアはエスカレーション基準として使えない
+8. **サブエージェント独立タスクは 1 レスポンスで並列実行（[D1.3](/d1-agentic#1-3-並列-vs-順次サブエージェント実行)）**
+9. **`allowed-tools` はブロック機能ではなく事前承認機能**（実際にブロックするのは `permissions.deny`）
+10. **Agent SDK Hooks（[D1.5](/d1-agentic#1-5-agent-sdk-フックパターン)）と Claude Code Hooks（[D3.3](/d3-claude-code#3-3-claude-code-フック-lifecycle-hooks)）は別物**
+</Callout>
