@@ -65,11 +65,33 @@ Goal: prove that the full content + Japanese search + SEO setup is production-re
 
 To be filled in when reached.
 
-### Checkpoint 3 — before Step 7
+### Checkpoint 3 — Step 7 (cleared 2026-04-26)
 
-Goal: confirm the GitHub repository state (commit history, README accuracy, license files) is publish-ready before connecting Cloudflare Pages and the custom domain.
+Goal: confirm the GitHub repository state (commit history, README accuracy, license files) is publish-ready before connecting Cloudflare and the custom domain — and confirm the production deployment serves the same artefacts the local build emits.
 
-To be filled in when reached.
+Pre-push review surfaced and fixed:
+
+| Issue | Fix |
+|---|---|
+| GitHub repo named `ccaf_guide` (underscore) but every internal reference used `ccaf-guide` (hyphen) — projectLink, docsRepositoryBase, /about license links would 404 in production | `gh repo rename ccaf-guide`; remote URL auto-updated locally |
+| Five anchor links of the form `/d1-agentic#1-3-...` — Nextra strips `.` from heading IDs so the live IDs are `#13-...` | Rewrote all five anchor targets in `antipatterns.mdx` and `d3-claude-code.mdx` |
+| Hosting target was Cloudflare Pages in the requirements; the Cloudflare-recommended path for new projects since 2025 is Workers + Static Assets | Added `wrangler.jsonc`, switched scripts and harness docs |
+
+Production verification on `https://ccaf.dev`:
+
+| Check | Result |
+|---|---|
+| Home `/` | HTTP 200, title `CCA-F 完全対策教科書`, disclaimer × 3 |
+| `/d1-agentic/` | HTTP 200, templated title, SVG diagrams render with domain colours |
+| `/_pagefind/pagefind.js` | HTTP 200, 45 KB |
+| `/sitemap.xml` | HTTP 200, 13 `<loc>` entries |
+| `/robots.txt` | HTTP 200, correct `User-agent` / `Allow` / `Sitemap` / `Host` |
+| `/nonexistent-path/` | HTTP 404 (handled by `not_found_handling: "404-page"` → `out/404.html`) |
+| TLS / HTTP/2 | Cloudflare Universal SSL, `cf-cache-status: HIT` |
+
+Manual browser checks (sidebar grouping, search hits for "コーディネーター" and "Hub-and-Spoke", GitHub iconography, "このページを編集" link, dark mode, mobile menu): all pass.
+
+**Outcome**: site is live at https://ccaf.dev. Phase 2 work (Cloudflare Access, English translation under `/en/`) is decoupled from this checkpoint.
 
 ## Trade-offs explicitly accepted
 
