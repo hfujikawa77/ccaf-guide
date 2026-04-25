@@ -78,9 +78,9 @@ import { Callout } from 'nextra/components'
 3. `tool_choice` の 3 設定：auto / any / forced — 違いと使いどころ
 4. プログラマティック強制 vs プロンプト指示の判断基準
 5. Batch API が適さないワークフロー（ブロッキング・SLA 必要・**エージェンティックループ含む**）
-6. サブエージェントはコンテキストを自動継承しない（[D1.4](/d1-agentic#1-4-サブエージェントへのコンテキスト渡し)）
+6. サブエージェントはコンテキストを自動継承しない（[D1.4](/d1-agentic#14-サブエージェントへのコンテキスト渡し)）
 7. 感情スコアはエスカレーション基準として使えない
-8. **サブエージェント独立タスクは 1 レスポンスで並列実行（[D1.3](/d1-agentic#1-3-並列-vs-順次サブエージェント実行)）**
+8. **サブエージェント独立タスクは 1 レスポンスで並列実行（[D1.3](/d1-agentic#13-並列-vs-順次サブエージェント実行)）**
 9. **`allowed-tools` はブロック機能ではなく事前承認機能**（実際にブロックするのは `permissions.deny`）
-10. **Agent SDK Hooks（[D1.5](/d1-agentic#1-5-agent-sdk-フックパターン)）と Claude Code Hooks（[D3.3](/d3-claude-code#3-3-claude-code-フック-lifecycle-hooks)）は別物**
+10. **Agent SDK Hooks（[D1.5](/d1-agentic#15-agent-sdk-フックパターン)）と Claude Code Hooks（[D3.3](/d3-claude-code#33-claude-code-フックlifecycle-hooks)）は別物**
 </Callout>
