@@ -95,15 +95,32 @@ The original "❌ 悪い例 / ✅ 良い例" two-column blocks become a Markdown
 
 ## SVG diagrams
 
-SVG figures in the original HTML are inlined verbatim inside MDX. Wrap each with a short caption above and a horizontal rule below for visual separation. Do not modify the SVG markup; do not extract to a separate file unless reuse is needed.
+SVG figures in the original HTML are inlined verbatim inside MDX. Wrap each with the `.diagram` div + `.dtitle` caption (CSS lives in `app/globals.css`). Convert HTML attributes to JSX form (camelCase: `viewBox`, `textAnchor`, `fontSize`, `strokeWidth`, `markerEnd`, etc.).
 
 ```mdx
-**図1-1: 正しいアジェンティックループ制御フロー**
-
-<svg viewBox="0 0 680 320" xmlns="http://www.w3.org/2000/svg">
-  ...
-</svg>
+<div className="diagram">
+  <div className="dtitle">図1-1: 正しいアジェンティックループ制御フロー</div>
+  <svg viewBox="0 0 680 320" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', maxWidth: '680px' }}>
+    <rect x="250" y="10" width="180" height="44" rx="8" fill="var(--d1b)" stroke="var(--d1m)" strokeWidth="1.5"/>
+    <text x="340" y="28" textAnchor="middle" fontSize="12" fontWeight="600" fill="var(--d1)">Claude APIリクエスト</text>
+    ...
+  </svg>
+</div>
 ```
+
+### Escape MDX-special characters in SVG `<text>`
+
+MDX with GFM treats some characters specially even inside JSX children:
+
+| Character | Trigger | Fix |
+|---|---|---|
+| `~/path` | If two `~` appear in the same diagram, GFM pairs them as strikethrough delimiters and `</text>` parsing fails | Wrap the path in `{'~/path'}` (JSX expression) |
+| `{`, `}` | Treated as JSX expression delimiters | Wrap literal braces in `{'{example}'}` form |
+| `<`, `>` | Treated as JSX tag delimiters | Use HTML entities `&lt;` / `&gt;` or wrap in `{'<x>'}` |
+
+### `<defs>` markers must have unique `id`s
+
+Because every MDX page renders into the same DOM tree on a multi-page site, two SVGs that both define `<marker id="arr">` will collide and one set of arrowheads will render incorrectly. Prefix every `<marker id="...">` with the figure's identifier (e.g. `id="d12arr"`, `id="d31arr"`). Update both the `<marker id>` and the corresponding `markerEnd="url(#...)"`.
 
 ## Tags / badges (`.tag d1`, `.v3new`, etc.)
 
@@ -137,3 +154,24 @@ After migrating each page:
    - No raw HTML class names leak into the rendered output
 
 If any check fails, fix in the same commit; do not advance to the next page.
+
+### Run build separately from commit
+
+**Do not** chain build with the commit step using `&&` after a pipeline:
+
+```bash
+# BAD — pipefail is off by default; tail's exit 0 masks the build failure
+npm run build 2>&1 | tail -8 && git commit -m '...'
+```
+
+Instead:
+
+```bash
+# GOOD — run build to a log and check the actual exit code
+rm -rf .next && npm run build > /tmp/build.log 2>&1
+echo "EXIT_CODE=$?"  # must be 0 before committing
+tail -10 /tmp/build.log
+git commit -m '...'
+```
+
+Or simply: run `npm run build` on its own first, eyeball the result, then commit. This is the lesson from the broken `4fbd7ca` commit, which shipped a `<text>~/.claude/...</text>` pair that failed MDX compilation but slipped through because the build's failure exit code was swallowed by the trailing `tail` in the pipeline.

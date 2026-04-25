@@ -63,6 +63,21 @@ npm run typecheck    # tsc --noEmit
 Conventional Commits (`feat:`, `fix:`, `chore:`, `docs:`, `style:`, `refactor:`, `test:`, `build:`, `ci:`).
 One commit per logical work unit. Run `npm run typecheck` and `npm run build` before committing changes that touch `app/`, `content/`, or `next.config.mjs`.
 
+**Never chain `npm run build` with `git commit` through a pipeline:**
+
+```bash
+# BAD — `tail`'s exit code masks the build failure
+npm run build 2>&1 | tail -8 && git commit -m '...'
+
+# GOOD — capture exit code explicitly
+rm -rf .next && npm run build > /tmp/build.log 2>&1
+echo "EXIT_CODE=$?"  # must be 0
+tail -10 /tmp/build.log
+git commit -m '...'
+```
+
+This rule comes from a real broken commit (`4fbd7ca`) that shipped a failing MDX file because the trailing `tail` returned 0.
+
 ### MDX content rules
 
 See `docs/migration-rules.md` for the full HTML → MDX conversion table. Highlights:
