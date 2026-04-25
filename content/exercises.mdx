@@ -1,18 +1,151 @@
 ---
 title: 公式 Exam Guide 演習
-description: CCA-F 公式 Exam Guide の 4 つの演習（Multi-Tool Agent / Claude Code 設定 / データ抽出 / マルチエージェントリサーチ）の実装ガイド。
+description: CCA-F 公式 Exam Guide が指定する 4 つの演習（Multi-Tool Agent / Claude Code 設定 / データ抽出パイプライン / マルチエージェントリサーチ）の実装ガイド。
 ---
+
+import { Callout } from 'nextra/components'
 
 # 公式 Exam Guide 演習 — 実装ガイド
 
-公式 Exam Guide が指定する 4 つの演習。これを実際にコードで実装することが合格への最短経路です。
-
-> このページのコンテンツは Step 3 で移植予定です。
+公式 Exam Guide が指定する 4 つの演習です。これを実際にコードで実装することが合格への最短経路です。
 
 ## 演習 1: Build a Multi-Tool Agent with Escalation Logic
 
+**目標**: stop_reason 制御・構造化エラー・フックパターンを手で書いて体得する
+
+**カバー**: D1 / D2 / D5
+
+1. MCP tools を 3〜4 本定義。**少なくとも 2 本は類似機能を持つツールを作り、description で明確に区別**（ここが試験で問われる）
+2. stop_reason を検査してループを継続 / 終了するアジェンティックループを実装。`"tool_use"` → 継続、`"end_turn"` → 終了
+3. ツールに構造化エラーレスポンスを追加：`errorCategory`（transient / validation / permission）+ `isRetryable` ボーリアン + 説明。各エラータイプでエージェントが適切に対応することをテスト
+4. ビジネスルール強制フックを実装。例：$500 超の返金をブロックして人間エスカレーションへリダイレクト
+5. 複数課題のリクエスト（例：「返金と住所変更を同時に」）でテスト。エージェントが課題を分解して並列処理し、統合レスポンスを返すことを確認
+
+```ts
+// 演習1のTypeScript実装骨格
+const tools = [
+  { name: "get_customer", description: "顧客IDで確認。返金前に必ず呼ぶ。lookup_orderとの使い分け：アカウント確認→get_customer、注文照会→lookup_order" },
+  { name: "lookup_order", description: "注文IDで照会。get_customerで確認後に使う" },
+  { name: "process_refund", description: "返金処理。get_customerによる確認が前提条件" },
+  { name: "escalate_to_human", description: "人間エージェントへエスカレーション。customer_id・root_cause・recommended_actionを含む" },
+];
+
+// PostToolUseフック（$500超の返金をブロック）
+function postToolUseHook(toolName: string, input: any, result: any) {
+  if (toolName === "process_refund" && input.amount > 500) {
+    return { blocked: true, redirect: "escalate_to_human",
+      reason: "500ドル超の返金は人間の承認が必要" };
+  }
+  return result;
+}
+```
+
 ## 演習 2: Configure Claude Code for a Team Development Workflow
+
+**目標**: CLAUDE.md 階層・Skills・MCP 設定を実際のプロジェクトで構築する
+
+**カバー**: D3 / D2
+
+1. プロジェクトレベルの `.claude/CLAUDE.md` を作成。コーディング基準・テストコンベンションを記述。これが全チームメンバーに適用されることを確認（`/memory` コマンドで検証）
+2. `.claude/rules/` に YAML フロントマターの glob パターンを持つルールファイルを作成。例：`paths: ["src/api/**/*"]`（API 専用）、`paths: ["**/*.test.*"]`（テスト全体）
+3. `.claude/skills/` に `context: fork` と `allowed-tools` 制限付きの Skill を作成。Skill が独立したコンテキストで実行されることを確認（メインコンテキストを汚染しない）
+4. `.mcp.json` に `${GITHUB_TOKEN}` 環境変数展開で MCP サーバーを設定。個人用実験 MCP は `~/.claude.json` に設定。両方が同時に利用できることを確認
+5. Plan mode と direct execution を意図的に使い分け：単一ファイルバグ修正（direct）・マルチファイルリファクタリング（plan）・ライブラリ移行（plan）
+
+```md
+# .claude/rules/typescript.md
+---
+paths:
+  - "src/**/*.ts"
+  - "src/**/*.tsx"
+---
+TypeScriptの規約：strict mode必須、any型使用禁止、型引数は明示的に指定
+```
+
+```json
+// .mcp.json
+{
+  "mcpServers": {
+    "github": {
+      "command": "npx",
+      "args": ["@modelcontextprotocol/server-github"],
+      "env": { "GITHUB_TOKEN": "${GITHUB_TOKEN}" }
+    }
+  }
+}
+```
 
 ## 演習 3: Build a Structured Data Extraction Pipeline
 
+**目標**: JSON schema 設計・tool_use・バリデーション・バッチ処理を実装する
+
+**カバー**: D4 / D5
+
+1. required / optional / nullable 混在の JSON schema を持つ抽出ツールを定義。情報が存在しないかもしれないフィールドは nullable 化。ドキュメントに情報がない場合にモデルが null を返すことを確認（幻覚しないこと）
+2. バリデーション失敗時の retry-with-error-feedback ループを実装。元ドキュメント・失敗した抽出・具体的なバリデーションエラーを含めて再送。フォーマットエラー（リトライ有効）vs 情報不在（リトライ無効）を区別
+3. 多様な文書構造（inline citation vs bibliography、narrative vs structured table）を処理する few-shot examples を追加
+4. Message Batches API で 100 件処理。`custom_id` で失敗文書を特定し、修正（大きすぎる文書はチャンク分割）して再送。処理時間と SLA 制約を計算
+5. フィールド別 confidence score を出力させ、低信頼抽出を人間レビューにルーティング。ドキュメントタイプ・フィールド別に精度を分析
+
+```ts
+// 演習3: nullable fieldsを持つJSON schema
+const extractionTool = {
+  name: "extract_invoice",
+  input_schema: {
+    type: "object",
+    properties: {
+      invoice_number: { type: "string" },           // required
+      total_amount:   { type: "number" },           // required
+      due_date:       { type: ["string", "null"] }, // nullable
+      tax_rate:       { type: ["number", "null"] }, // nullable
+      category:       { type: "string", enum: ["software", "hardware", "service", "other"] },
+      category_detail:{ type: ["string", "null"] }, // "other"の場合の詳細
+    },
+    required: ["invoice_number", "total_amount", "category"]
+  }
+};
+```
+
 ## 演習 4: Design and Debug a Multi-Agent Research Pipeline
+
+**目標**: マルチエージェントの完全実装・エラー伝播・情報出所を体得する
+
+**カバー**: D1 / D2 / D5
+
+1. `allowedTools: ["Task"]` 付きコーディネーターを実装。各サブエージェントには直前の結果をプロンプトに直接含める（自動継承はない）
+2. コーディネーターが 1 レスポンスで複数の Task 呼び出しを発行して並列実行。順次実行と比較してレイテンシ改善を測定
+3. サブエージェントの出力に claim-source mapping（source URL・document 名・pub 日付・関連抜粋）を含めさせる。合成エージェントが帰属情報を保持することを確認
+4. サブエージェント timeout をシミュレート。コーディネーターが構造化エラーコンテキスト（失敗タイプ・試みたクエリ・部分結果）を受け取り、部分結果で処理を継続してカバレッジギャップを注釈付きで出力することを確認
+5. 2 つの信頼できるソースが競合する統計を示すシナリオでテスト。合成出力が一方を選択せずに両方を帰属付きで含め、conflict を明示的に注釈することを確認
+
+```ts
+// 演習4: コーディネーターの並列サブエージェント呼び出し
+// 1レスポンスで複数のTask呼び出し = 並列実行
+const parallelTasks = [
+  { type: "tool", name: "Task", input: {
+    description: "Search Agent: Query recent research on topic X",
+    prompt: searchAgentPrompt  // 必要な全コンテキストを含める
+  }},
+  { type: "tool", name: "Task", input: {
+    description: "Analysis Agent: Analyze uploaded documents on topic X",
+    prompt: analysisAgentPrompt
+  }}
+];
+// これを1つのコーディネーターレスポンスのcontent配列に含める → 並列実行
+
+// エラー伝播の正しい実装
+function handleSubagentError(error: Error) {
+  return {
+    success: false,
+    errorType: "transient",
+    attemptedQuery: query,
+    partialResults: partialData,   // 部分結果があれば含める
+    alternatives: ["retry with modified query", "use cached results"]
+  };
+  // ❌ return []; // 空リストで成功を返すのはanti-pattern
+}
+```
+
+<Callout type="info" emoji="🎯">
+4 演習をすべて手で実装すると、試験で問われる判断軸が体感的に身につきます。とくに **演習 4 のマルチエージェントは試験頻出** なので、最低 1 回は完走することを強く推奨します。
+</Callout>
