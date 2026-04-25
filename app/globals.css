@@ -1,0 +1,55 @@
+/* Domain palette: original colours from cca_textbook_v3.html.
+   Used by SVG diagrams migrated verbatim from the source HTML. */
+:root {
+  --d1: #3c3489;
+  --d1b: #eeedfe;
+  --d1m: #afa9ec;
+  --d2: #085041;
+  --d2b: #e1f5ee;
+  --d2m: #5dcaa5;
+  --d3: #633806;
+  --d3b: #faeeda;
+  --d3m: #ef9f27;
+  --d4: #712b13;
+  --d4b: #faece7;
+  --d4m: #f0997b;
+  --d5: #0c447c;
+  --d5b: #e6f1fb;
+  --d5m: #85b7eb;
+
+  --diagram-border: #ddd9d0;
+  --diagram-bg: #fff;
+  --ink: #1a1a1a;
+  --ink2: #444;
+  --ink3: #666;
+  --ink4: #999;
+}
+
+/* Diagram block — replicates the .diagram wrapper from the source HTML */
+.diagram {
+  background: var(--diagram-bg);
+  border: 1px solid var(--diagram-border);
+  border-radius: 10px;
+  padding: 1.25rem;
+  margin: 1.25rem 0;
+  overflow-x: auto;
+}
+
+.dtitle {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink3);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-bottom: 0.9rem;
+}
+
+/* Inherit dark-mode hand-off from Nextra theme tokens */
+.dark .diagram {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.dark .dtitle {
+  color: var(--ink4);
+}
