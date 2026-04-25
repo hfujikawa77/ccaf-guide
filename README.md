@@ -10,7 +10,7 @@ Live site: [ccaf.dev](https://ccaf.dev) *(deploys after Step 7)*
 ## Stack
 
 - **Framework**: [Nextra](https://nextra.site) v4 — Next.js 15 App Router + MDX
-- **Hosting**: Cloudflare Pages (static, `output: 'export'`)
+- **Hosting**: Cloudflare Workers + Static Assets (`output: 'export'` → `out/` served via `wrangler.jsonc`)
 - **Search**: FlexSearch (Nextra default; Japanese tokenizer planned for Step 5)
 - **Analytics**: Cloudflare Web Analytics
 - **Domain**: ccaf.dev (Cloudflare Registrar)
@@ -25,7 +25,8 @@ npm run dev          # http://localhost:3000
 npm run typecheck    # tsc --noEmit
 npm run build        # static export to out/
 npm run preview      # serve out/ via npx serve
-npm run preview:cf   # serve out/ via wrangler (Cloudflare Pages emulation)
+npm run preview:cf   # serve out/ via wrangler dev (Workers + Static Assets emulation)
+npm run deploy       # wrangler deploy — manual deploy outside Workers Builds
 ```
 
 ## Project Layout
@@ -37,6 +38,7 @@ npm run preview:cf   # serve out/ via wrangler (Cloudflare Pages emulation)
 ├── docs/                      Engineering harness (architecture, migration rules)
 ├── mdx-components.tsx         Theme MDX components shim
 ├── next.config.mjs            Nextra wrapper + static export config
+├── wrangler.jsonc             Workers + Static Assets deploy config
 ├── tsconfig.json              TypeScript config
 ├── package.json               Pinned dependencies
 ├── CLAUDE.md                  Project conventions for Claude Code

@@ -15,7 +15,7 @@ This file provides guidance to Claude Code when working with this repository.
 | Framework | Nextra v4.6.1 | App Router + MDX, opinionated docs theme |
 | Runtime | Next.js 15.5.15 + React 19 | Latest stable, App Router required by Nextra v4 |
 | Build | `output: 'export'` (static) | Pure static for Cloudflare Pages, no SSR |
-| Hosting | Cloudflare Pages | Free CDN, zero-config GitHub integration |
+| Hosting | Cloudflare Workers + Static Assets | New-project default since Cloudflare folded Pages into Workers in 2025–2026 (see migrate-from-pages docs); the `out/` directory is served via the `assets` binding in `wrangler.jsonc` |
 | Search | Pagefind (Nextra v4 default) | Native CJK segmentation; postbuild step generates `out/_pagefind/` |
 | Domain | ccaf.dev (Cloudflare Registrar) | Short, exam-code-direct, HTTPS-enforced TLD |
 
@@ -26,10 +26,11 @@ Versions are **fully pinned** (no caret ranges) to avoid surprise updates. Renov
 ```bash
 npm install          # one-time
 npm run dev          # local dev (http://localhost:3000)
-npm run build        # static export to out/
+npm run build        # static export to out/ (+ prebuild SEO + postbuild Pagefind)
 npm run preview      # serve out/ via npx serve
-npm run preview:cf   # serve out/ via wrangler (Cloudflare Pages emulation)
+npm run preview:cf   # serve out/ via wrangler dev (Workers + Static Assets emulation)
 npm run typecheck    # tsc --noEmit
+npm run deploy       # wrangler deploy — manual deploy bypassing Workers Builds
 ```
 
 ## Repository Layout
@@ -48,6 +49,7 @@ npm run typecheck    # tsc --noEmit
 ├── public/                    static assets (favicon, OG image)
 ├── mdx-components.tsx         theme MDX components shim
 ├── next.config.mjs            Nextra wrapper + static export config
+├── wrangler.jsonc             Workers + Static Assets deploy config
 ├── tsconfig.json              TS config (paths: @/* → ./*)
 ├── package.json               pinned dependencies
 ├── CLAUDE.md                  this file
@@ -132,7 +134,7 @@ This repository follows the harness engineering principles outlined by OpenAI: t
 
 ## Out of Scope (do not do)
 
-- Authentication / user accounts (Phase 2; will use Cloudflare Access)
+- Authentication / user accounts (Phase 2; will use Cloudflare Access at the edge — independent of Workers Static Assets, no code change required to enable)
 - Server-side rendering / Server Actions
 - Quiz / scoring features
 - Comments / FAQ

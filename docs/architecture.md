@@ -8,16 +8,26 @@ This document records the stack rationale, verification checkpoints, and known i
 |---|---|---|---|
 | Framework | Nextra v4 | Astro Starlight, VitePress, raw HTML | Tightest fit for an MDX docs site with built-in sidebar / search / TOC; React/Next.js ecosystem signals reusability for future tools |
 | Build mode | `output: 'export'` (static) | SSR via `@cloudflare/next-on-pages` | No dynamic data; static export is simplest and fastest; SSR is optional later if auth requires it |
-| Hosting | Cloudflare Pages | Vercel, GitHub Pages, Netlify | Free custom domains, generous limits, free Web Analytics, free Cloudflare Access (Phase 2 auth) |
+| Hosting | Cloudflare Workers + Static Assets | Cloudflare Pages, Vercel, GitHub Pages, Netlify | Free custom domains, generous limits, free Web Analytics, free Cloudflare Access (Phase 2 auth). Originally specced as Cloudflare Pages, but Cloudflare's official "Migrate from Pages to Workers" guide signals Workers is now the recommended default — Pages new-feature work has stalled while Workers gains Durable Objects / Cron Triggers / Workflows / Containers. Picking Workers from day 1 sidesteps a future migration |
 | Search | Pagefind (Nextra v4 bundles `<Search>` for Pagefind) | FlexSearch (Nextra v3-era), Algolia DocSearch | Pagefind has native CJK segmentation, runs entirely client-side, no API key. Originally we planned FlexSearch with `tokenize:'forward'` for Japanese, but Nextra v4 had already migrated to Pagefind, so the Step 5 work was a postbuild integration instead of a tokenizer tweak |
 | Domain | ccaf.dev (Cloudflare Registrar) | ccaf.com, cca-prep.dev | 4-char, exam-code-direct, `.dev` enforces HTTPS, registrar at cost |
-| Auth (Phase 2) | Cloudflare Access | Workers-based custom auth | Edge-level gate, no code change required to enable |
+| Auth (Phase 2) | Cloudflare Access | Workers-based custom auth | Edge-level gate, sits in front of any Workers/Pages origin; no application code change required |
 
 ## Static export decisions
 
 - `next.config.mjs` sets `output: 'export'`, `trailingSlash: true`, `images.unoptimized: true`.
 - The catch-all route `app/[[...mdxPath]]/page.tsx` is paired with `generateStaticParamsFor('mdxPath')` so every MDX file under `content/` is pre-rendered at build time.
 - No `app/api/`, no Server Actions, no `revalidate` settings. Anything that requires a running Node server is forbidden.
+
+## Workers + Static Assets deployment
+
+`wrangler.jsonc` declares `assets.directory = "./out"` and `not_found_handling = "404-page"`. There is no `main` entry — the deployment is purely static, served by Cloudflare's asset router with no Worker bytecode in the request path. Adding Worker logic later is a one-line edit (`"main": "src/worker.ts"`).
+
+`compatibility_date` is pinned to `2026-04-25`; bump it deliberately on a Renovate-style cadence rather than auto-rolling.
+
+Cloudflare Workers Builds reads `wrangler.jsonc` on every push to `main`, runs `npm run build` (which transitively runs the prebuild SEO script and the postbuild Pagefind index), then `npx wrangler deploy` to publish `out/` as Static Assets.
+
+**Why Workers, not Pages**: see Stack rationale row above. The migration guide at developers.cloudflare.com/workers/static-assets/migration-guides/migrate-from-pages/ is Cloudflare's own signal that Workers is the new-project default; Pages is in feature-freeze mode while new platform features (Durable Objects, Cron Triggers, Workflows, Containers, Secrets Store) ship Workers-only.
 
 ## Pagefind integration notes
 

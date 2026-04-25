@@ -11,7 +11,8 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "preview": "npx serve out",
-    "preview:cf": "npx wrangler pages dev out"
+    "preview:cf": "wrangler dev",
+    "deploy": "wrangler deploy"
   },
   "dependencies": {
     "next": "15.5.15",
@@ -25,6 +26,7 @@
     "@types/react": "19.0.7",
     "@types/react-dom": "19.0.3",
     "pagefind": "1.5.2",
-    "typescript": "5.7.3"
+    "typescript": "5.7.3",
+    "wrangler": "4.85.0"
   }
 }

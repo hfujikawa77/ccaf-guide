@@ -1,0 +1,29 @@
+/**
+ * Cloudflare Workers + Static Assets configuration.
+ *
+ * Serves the Next.js static export from `out/` as a pure static site.
+ * Adding a `main` entry here later would enable a Worker for dynamic
+ * routes (e.g. authenticated API endpoints, server-rendered OG images,
+ * Cloudflare Access integration); the current shape is assets-only.
+ *
+ * Build pipeline:
+ *   1. `npm run build` runs `prebuild` (generate-seo.mjs),
+ *      `next build` (static export -> out/), then `postbuild`
+ *      (`pagefind --site out --output-subdir _pagefind`).
+ *   2. `npx wrangler deploy` (run by Cloudflare Workers Builds) reads
+ *      this file, packages `./out`, and deploys the static assets.
+ *
+ * Docs: https://developers.cloudflare.com/workers/static-assets/
+ */
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ccaf-guide",
+  "compatibility_date": "2026-04-25",
+  "assets": {
+    "directory": "./out",
+    "not_found_handling": "404-page"
+  },
+  "observability": {
+    "enabled": true
+  }
+}
