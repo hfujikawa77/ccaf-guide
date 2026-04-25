@@ -4,8 +4,9 @@
   "private": true,
   "description": "Unofficial CCA-F (Claude Certified Architect - Foundations) study guide",
   "scripts": {
-    "dev": "next dev",
+    "dev": "node scripts/generate-seo.mjs && next dev",
     "build": "next build",
+    "prebuild": "node scripts/generate-seo.mjs",
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "preview": "npx serve out",
