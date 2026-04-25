@@ -55,6 +55,22 @@ import { Callout } from 'nextra/components'
 - フック介入時に `tool_result` を返さず `tool_use` だけ追加し、エージェントが「結果が返ってない」と再呼出ループに入る
 - 空配列を成功で返してしまう（access failure と valid empty result の混同、[D2.2](/d2-tool-mcp#22-構造化エラーレスポンス) 参照）
 
+### 完了基準（Definition of Done）
+
+**時間目安**: 90〜120 分
+
+**動作確認チェックリスト：**
+
+- [ ] `stop_reason === "end_turn"` で確実にループ終了することを確認
+- [ ] `stop_reason === "tool_use"` で 1 レスポンス内の複数ツールが並列実行される
+- [ ] 構造化エラー（4 カテゴリ）がツール戻り値に含まれ、`isRetryable` で retry 判断が分岐する
+- [ ] $500 超の返金が PostToolUse フックでブロックされ、`escalate_to_human` にリダイレクトされる
+- [ ] 「返金 + 住所変更」の複数課題リクエストで両方を分解・並列処理して統合レスポンスを返す
+- [ ] tool_result が `role: 'user'` として履歴に追加されている（assistant ではない）
+- [ ] permission エラーがリトライされず、即座にエスカレーションされる
+
+**関連する試験シナリオ**: [Scenario 1: Customer Support Resolution Agent](/scenarios#scenario-1-customer-support-resolution-agent)
+
 <details>
 <summary><strong>参照実装を見る</strong>（自分で書いてから開くことを推奨）</summary>
 
@@ -279,6 +295,22 @@ async function runAgent(userMessage: string) {
 - **`disable-model-invocation: true` で context token を節約できる** という誤解。フラグの効果は「自動呼出抑止」だけで、Skill の name と description は system-reminder に注入され続ける。トークン節約目的の手段ではない（試験の罠候補）
 - **path-rule は Read 時のみ注入され、Write 時には注入されない**（実装上の落とし穴）。「テストファイル編集時に強制したい規約」は Read 系操作の文脈にしか効かないことに注意。試験範囲ではないが本番運用で踏むので一度知っておく価値あり
 
+### 完了基準（Definition of Done）
+
+**時間目安**: 60〜90 分（コードを書くより設定ファイルを書く時間が支配的）
+
+**動作確認チェックリスト：**
+
+- [ ] `.claude/CLAUDE.md` の内容が `/memory` コマンドで確認できる
+- [ ] `.claude/rules/api.md` が `src/api/**` 配下のファイルを Read した時のみ会話に注入される
+- [ ] `.claude/skills/release-note/SKILL.md` が `/release-note` 明示呼び出しでのみ実行される（自動起動しない）
+- [ ] `.mcp.json` の `${GITHUB_TOKEN}` が環境変数から展開される（生のトークンが commit されていない）
+- [ ] `.claude/settings.json` の `permissions.deny` で `Bash(rm -rf:*)` 等が物理的にブロックされる
+- [ ] `CLAUDE.local.md` が `.gitignore` 対象になっており、`git status` に出ない
+- [ ] 単一ファイル修正は direct execution、マルチファイル変更は plan mode を意図的に使い分けられる
+
+**関連する試験シナリオ**: [Scenario 2: Code Generation with Claude Code](/scenarios#scenario-2-code-generation-with-claude-code), [Scenario 4: Developer Productivity with Claude](/scenarios#scenario-4-developer-productivity-with-claude)
+
 <details>
 <summary><strong>参照実装を見る</strong>（自分で書いてから開くことを推奨）</summary>
 
@@ -438,6 +470,22 @@ model: sonnet
 - 情報不在ケースを「frame を変えれば見つかるかも」と何度もリトライ
 - `custom_id` を付けず、Batch のレスポンスをドキュメントに紐付けられない（失敗時に再送できない）
 - 信頼スコアを LLM に「自己報告」させて閾値ルーティングに使う — 自己報告型は校正不良。複数モデル合議や rule-based の補助スコアが必要
+
+### 完了基準（Definition of Done）
+
+**時間目安**: 90〜120 分
+
+**動作確認チェックリスト：**
+
+- [ ] 情報が存在しないドキュメントで nullable フィールドが `null` を返す（モデルが値を捏造しない）
+- [ ] `tool_choice: { type: 'tool', name: '...' }` で抽出ツール呼び出しが強制される
+- [ ] バリデーション失敗時、retry-with-error-feedback ループで具体的なエラーを context に含めて修正される
+- [ ] 「フォーマットエラー（リトライ有効）」と「情報不在（リトライ無効）」が区別され、無限ループに陥らない
+- [ ] Few-shot examples で inline citation / bibliography 等の異なる文書構造をハンドリングできる
+- [ ] Batch API で 100 件投入し、`custom_id` で失敗ドキュメントを特定して再送できる
+- [ ] line_item ごとの confidence で低信頼項目が人間レビューにルーティングされる
+
+**関連する試験シナリオ**: [Scenario 6: Structured Data Extraction](/scenarios#scenario-6-structured-data-extraction)
 
 <details>
 <summary><strong>参照実装を見る</strong>（自分で書いてから開くことを推奨）</summary>
@@ -642,6 +690,22 @@ async function submitBatch(documents: { id: string; text: string }[]) {
 - Web 検索ツールを Synthesis Agent にも与える（4〜5 ツールを超えると選択精度が低下する罠 9）
 - 合成出力で「数値が違う 2 ソース」のうち片方だけ採用してしまい、provenance が消える
 - 並列実行のつもりで `for ... await` してしまい順次実行になる（[D1.3](/d1-agentic#13-並列-vs-順次サブエージェント実行)）
+
+### 完了基準（Definition of Done）
+
+**時間目安**: 120〜180 分（最大の演習・3 演習の総合演習）
+
+**動作確認チェックリスト：**
+
+- [ ] コーディネーターが 1 アシスタントレスポンス内で複数 Task を発行し、並列実行される
+- [ ] サブエージェントプロンプトに「元のユーザー要求」「前段の構造化出力」「制約」「出力スキーマ」がすべて明示的に詰められている
+- [ ] サブエージェント出力に `source_url`・`published_date`・関連抜粋が含まれる
+- [ ] サブエージェント timeout を `Promise.allSettled` で受け、`partial_results` が保たれる
+- [ ] 失敗したサブエージェントが `coverage_gaps` として明示的に注釈される
+- [ ] 競合する数値（同じ metric で異なる値）が `conflict_detected: true` で両方保持される（一方を任意選択しない）
+- [ ] 順次実行と比較して並列実行のレイテンシ改善を実測できる
+
+**関連する試験シナリオ**: [Scenario 3: Multi-Agent Research System](/scenarios#scenario-3-multi-agent-research-system)
 
 <details>
 <summary><strong>参照実装を見る</strong>（自分で書いてから開くことを推奨）</summary>

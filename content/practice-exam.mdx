@@ -16,6 +16,48 @@ import { Callout } from 'nextra/components'
 - 目標：Practice Exam で **900 / 1000 以上を安定して出せる** ようになってから本番予約
 </Callout>
 
+## 自己採点と学習サイクル
+
+Practice Exam は単に受けて終わりにせず、**間違えたドメインを特定 → 該当演習に戻って再実装する** ループの起点として使います。Skilljar の解説とドメイン別正答率がこのサイクルへの入口です。
+
+### スコア帯別の方針
+
+| スコア帯 | 状態の解釈 | 推奨アクション |
+|---------|---------|--------------|
+| **〜 599** | 基礎不足 | [Anthropic Academy](/academy) の必須 3 コースから再受講。[演習](/exercises) を 1 つも完走していない可能性大 |
+| **600 〜 719** | 知識はあるが判断軸が未定着 | 全 [演習](/exercises) を順番に再実装。とくに「設計の判断軸」セクションを精読 |
+| **720 〜 849** | 合格圏内、苦手ドメインを特定 | ドメイン別正答率を確認し、下表のドリル先に戻る |
+| **850 〜 899** | 本番でも安定合格圏 | 試験で出ていない 2 つの [シナリオ](/scenarios) を読み込んでから本番予約 |
+| **900 〜** | 本番レディ | 同じ Practice Exam で 2 回連続 900+ を確認したら本番予約 |
+
+### ドメイン別誤答 → ドリル対応表
+
+Skilljar の Practice Exam 結果ページでドメイン別正答率を確認し、**80% を切ったドメインは下表の演習に戻ります**。
+
+| ドメイン | 配点 | 戻るべき演習 | 重点的に再読する箇所 |
+|---|---:|---|---|
+| **D1: Agentic** | 27% | [演習 1](/exercises#演習-1-build-a-multi-tool-agent-with-escalation-logic), [演習 4](/exercises#演習-4-design-and-debug-a-multi-agent-research-pipeline) | stop_reason 制御、並列 Task、コンテキスト渡し、サブエージェント description |
+| **D2: Tool / MCP** | 18% | [演習 1](/exercises#演習-1-build-a-multi-tool-agent-with-escalation-logic), [演習 2](/exercises#演習-2-configure-claude-code-for-a-team-development-workflow) | ツール description の境界線、構造化エラー、MCP 3 プリミティブ |
+| **D3: Claude Code** | 20% | [演習 2](/exercises#演習-2-configure-claude-code-for-a-team-development-workflow) | CLAUDE.md 階層、Skills フロントマター、`permissions.deny` vs `allowed-tools` |
+| **D4: Prompt Eng** | 20% | [演習 3](/exercises#演習-3-build-a-structured-data-extraction-pipeline) | nullable schema、retry-with-error-feedback、Batch API の境界 |
+| **D5: Context** | 15% | [演習 3](/exercises#演習-3-build-a-structured-data-extraction-pipeline), [演習 4](/exercises#演習-4-design-and-debug-a-multi-agent-research-pipeline) | コンテキスト圧縮、エスカレーション基準、provenance 保持 |
+
+### 学習サイクル
+
+<Callout type="info" emoji="🔁">
+**1 周のフロー**
+
+1. **Practice Exam 受験**（60 問・約 90 分）
+2. **ドメイン別正答率を Skilljar でチェック**
+3. **80% を切ったドメイン**を上表で特定し、対応する演習に戻る
+4. その演習の **完了基準（Definition of Done）** チェックリストをすべて ✅ できるか確認
+5. ✅ できない項目があれば、判断軸 → 詰まりやすい箇所 → 参照実装の順で再読し、再実装
+6. **1 週間〜10 日後** に Practice Exam 再受験（短すぎると問題を覚えてしまう）
+7. **900/1000 を 2 回連続** で出せたら本番予約
+
+このサイクルを 1〜3 周まわすのが、合格者に共通するパターン。1 回目で 900+ を取れる人はほぼいません。
+</Callout>
+
 ## コミュニティリソース（Practice Exam の補完）
 
 | リソース | 内容 | URL |
