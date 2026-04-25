@@ -1,10 +1,84 @@
 ---
 title: 6 つの試験シナリオ
-description: CCA-F の 6 シナリオ（Customer Support / Code Generation / Multi-Agent Research / Developer Productivity / CI/CD / Structured Data Extraction）の全詳細。
+description: CCA-F の 6 シナリオ（Customer Support / Code Generation / Multi-Agent Research / Developer Productivity / CI/CD / Structured Data Extraction）の全詳細とドメイン対応。
 ---
+
+import { Callout } from 'nextra/components'
 
 # 6 つの試験シナリオ — 全詳細
 
-試験では 6 シナリオから 4 つがランダム選択されます。**全 6 シナリオを完全準備**すること。
+試験では 6 シナリオから 4 つがランダム選択されます。**全 6 シナリオを完全準備** すること。
 
-> このページのコンテンツは Step 3 で移植予定です。
+## Scenario 1: Customer Support Resolution Agent
+
+返品・請求・アカウント変更などの高曖昧性リクエストを 80% 以上の初回解決率で処理するサポートエージェントを設計する。
+
+| MCP tools | 主要課題 |
+|---|---|
+| `get_customer`, `lookup_order`, `process_refund`, `escalate_to_human` | ツール記述の境界設計、ビジネスルール強制（$500 超は人間承認）、感情とは独立したエスカレーション基準 |
+
+**関連ドメイン**: D1（エージェント設計）/ D2（MCP ツール）/ D5（コンテキスト・エスカレーション）
+
+## Scenario 2: Code Generation with Claude Code
+
+チームで Claude Code を活用してコード生成・リファクタリング・デバッグ・ドキュメント作成を行う。CLAUDE.md・スラッシュコマンド・plan mode を使い分ける。
+
+| 設定対象 | 主要課題 |
+|---|---|
+| `.claude/CLAUDE.md`, `.claude/commands/`, `.claude/skills/`, `.claude/rules/` | 階層別の設定スコープ、チーム共有設定の置き場所、plan mode と direct execution の使い分け |
+
+**関連ドメイン**: D3（Claude Code 設定）/ D5（コンテキスト管理）
+
+## Scenario 3: Multi-Agent Research System
+
+コーディネーター + 4 専門サブエージェント（Web 検索・ドキュメント分析・合成・レポート生成）で、引用付き包括的レポートを生成する。
+
+| 構成要素 | 主要課題 |
+|---|---|
+| Coordinator (`allowedTools: ["Task"]`), Search / Analysis / Synthesis / Report Agents | 並列 vs 順次実行、コンテキスト渡し、claim-source mapping、競合する情報源の扱い |
+
+**関連ドメイン**: D1（マルチエージェント）/ D2（ツール設計）/ D5（情報出所）
+
+## Scenario 4: Developer Productivity with Claude
+
+エンジニアが未知コードベース探索・レガシーシステム理解・ボイラープレート生成・反復作業自動化に Claude を活用する。組み込みツール（Read, Write, Bash, Grep, Glob）+ MCP サーバー統合。
+
+| ツール | 主要課題 |
+|---|---|
+| Read / Write / Edit / Grep / Glob / Bash + MCP | 組み込みツールの選択基準、Edit が失敗した場合のフォールバック、scratchpad パターンによるコンテキスト管理 |
+
+**関連ドメイン**: D2（ツール選択）/ D3（Claude Code）/ D1（タスク分解）
+
+## Scenario 5: Claude Code for CI/CD
+
+CI/CD パイプラインでの自動コードレビュー・テストケース生成・PR フィードバック。アクション可能なフィードバックと誤検知最小化。
+
+| パイプライン要素 | 主要課題 |
+|---|---|
+| `claude -p`, `--output-format json`, `--json-schema`, 独立インスタンスでのレビュー | `-p` フラグ必須、生成と同じセッションでレビューしない（認知バイアス）、明示的カテゴリ基準で false positive を抑制 |
+
+**関連ドメイン**: D3（Claude Code）/ D4（プロンプト設計）
+
+## Scenario 6: Structured Data Extraction
+
+非構造化ドキュメントから情報を抽出し JSON スキーマで検証する。高精度維持・エッジケース処理・ダウンストリームシステム統合。
+
+| 設計要素 | 主要課題 |
+|---|---|
+| `tool_use` + JSON Schema, `nullable` フィールド, `enum + "other"` パターン | 情報不在を許容するスキーマ設計、retry-with-error-feedback、Batch API の適用判断 |
+
+**関連ドメイン**: D4（プロンプト設計）/ D5（コンテキスト・出所） 
+
+<Callout type="info" emoji="📚">
+**シナリオを横断する判断軸**
+
+各シナリオで具体的な題材は違いますが、評価される判断軸は共通です：
+
+1. **決定論的 vs 確率論的** の見極め
+2. **最小コストで根本原因に対処** する選択
+3. **コーディネーター中心** のマルチエージェント設計
+4. **構造化エラー** とエスカレーション基準
+5. **Provenance（出所）** の保持
+
+詳しくは [合格の 3 原則](/) と各 Domain ページを参照してください。
+</Callout>
