@@ -9,7 +9,7 @@ This document records the stack rationale, verification checkpoints, and known i
 | Framework | Nextra v4 | Astro Starlight, VitePress, raw HTML | Tightest fit for an MDX docs site with built-in sidebar / search / TOC; React/Next.js ecosystem signals reusability for future tools |
 | Build mode | `output: 'export'` (static) | SSR via `@cloudflare/next-on-pages` | No dynamic data; static export is simplest and fastest; SSR is optional later if auth requires it |
 | Hosting | Cloudflare Pages | Vercel, GitHub Pages, Netlify | Free custom domains, generous limits, free Web Analytics, free Cloudflare Access (Phase 2 auth) |
-| Search | Nextra-bundled FlexSearch | Pagefind, Algolia DocSearch | Zero-config for MVP; Pagefind migration planned for better Japanese tokenization (Phase 2) |
+| Search | Pagefind (Nextra v4 bundles `<Search>` for Pagefind) | FlexSearch (Nextra v3-era), Algolia DocSearch | Pagefind has native CJK segmentation, runs entirely client-side, no API key. Originally we planned FlexSearch with `tokenize:'forward'` for Japanese, but Nextra v4 had already migrated to Pagefind, so the Step 5 work was a postbuild integration instead of a tokenizer tweak |
 | Domain | ccaf.dev (Cloudflare Registrar) | ccaf.com, cca-prep.dev | 4-char, exam-code-direct, `.dev` enforces HTTPS, registrar at cost |
 | Auth (Phase 2) | Cloudflare Access | Workers-based custom auth | Edge-level gate, no code change required to enable |
 
@@ -18,6 +18,14 @@ This document records the stack rationale, verification checkpoints, and known i
 - `next.config.mjs` sets `output: 'export'`, `trailingSlash: true`, `images.unoptimized: true`.
 - The catch-all route `app/[[...mdxPath]]/page.tsx` is paired with `generateStaticParamsFor('mdxPath')` so every MDX file under `content/` is pre-rendered at build time.
 - No `app/api/`, no Server Actions, no `revalidate` settings. Anything that requires a running Node server is forbidden.
+
+## Pagefind integration notes
+
+Nextra v4's `<Search>` component fetches `/_pagefind/pagefind.js` at runtime, but Pagefind's CLI writes to `/pagefind/` by default. We override with `--output-subdir _pagefind` in the `postbuild` script, so the artefact paths line up.
+
+Pagefind is run after `next build`, scans `out/**/*.html`, looks at `<html lang>` to pick a language (we ship `lang="ja"` from `app/layout.tsx`), and only indexes elements with `data-pagefind-body="true"` — Nextra adds this attribute to the article body and `data-pagefind-ignore="all"` on `<pre>` blocks (because we set `search.codeblocks: false` in `next.config.mjs`).
+
+The `<Search>` component is not serialisable across the React server-component boundary, so a `'use client'` wrapper (`components/localized-search.tsx`) carries the Japanese UI strings.
 
 ## Verification checkpoints
 

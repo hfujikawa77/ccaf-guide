@@ -16,7 +16,7 @@ This file provides guidance to Claude Code when working with this repository.
 | Runtime | Next.js 15.5.15 + React 19 | Latest stable, App Router required by Nextra v4 |
 | Build | `output: 'export'` (static) | Pure static for Cloudflare Pages, no SSR |
 | Hosting | Cloudflare Pages | Free CDN, zero-config GitHub integration |
-| Search | FlexSearch (Nextra default) | Built-in. Japanese tokenizer config in Step 5 |
+| Search | Pagefind (Nextra v4 default) | Native CJK segmentation; postbuild step generates `out/_pagefind/` |
 | Domain | ccaf.dev (Cloudflare Registrar) | Short, exam-code-direct, HTTPS-enforced TLD |
 
 Versions are **fully pinned** (no caret ranges) to avoid surprise updates. Renovate manages upgrades.
@@ -63,7 +63,17 @@ npm run typecheck    # tsc --noEmit
 Conventional Commits (`feat:`, `fix:`, `chore:`, `docs:`, `style:`, `refactor:`, `test:`, `build:`, `ci:`).
 One commit per logical work unit. Run `npm run typecheck` and `npm run build` before committing changes that touch `app/`, `content/`, or `next.config.mjs`.
 
-**Never chain `npm run build` with `git commit` through a pipeline:**
+### Build flakiness
+
+If `next build` fails with `Cannot find module for page: /_document` during "Collecting page data", it's a stale cache, not a real error. Clear and retry:
+
+```bash
+rm -rf .next out node_modules/.cache && npm run build
+```
+
+This is a known intermittent issue with the Nextra v4 + Next.js 15 + App Router combination — the cache occasionally references a Pages-Router-era `_document` shape that doesn't exist on disk.
+
+### Never chain `npm run build` with `git commit` through a pipeline
 
 ```bash
 # BAD — `tail`'s exit code masks the build failure
