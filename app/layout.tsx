@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Footer, Layout, Navbar } from 'nextra-theme-docs'
 import { Banner, Head } from 'nextra/components'
+import { LocalizedSearch } from '../components/localized-search'
 import { getPageMap } from 'nextra/page-map'
 import 'nextra-theme-docs/style.css'
 import './globals.css'
@@ -49,6 +50,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           banner={banner}
           navbar={navbar}
           footer={footer}
+          search={<LocalizedSearch />}
           pageMap={await getPageMap()}
           docsRepositoryBase="https://github.com/yokoto/ccaf-guide/blob/main"
           editLink="このページを編集"
