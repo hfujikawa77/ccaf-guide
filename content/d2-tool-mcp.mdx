@@ -1,24 +1,112 @@
 ---
 title: 'Domain 2: Tool Design & MCP Integration'
-description: ツール記述設計・構造化エラー・粒度設計・MCP サーバー設定・3 プリミティブ・組み込みツール（配点 18%）。
+description: ツール記述設計・構造化エラーレスポンス・ツール粒度設計（fine-grained vs coarse-grained）・MCP サーバースコープ・MCP の 3 プリミティブ・組み込みツール（配点 18%）。
 ---
+
+import { Callout } from 'nextra/components'
 
 # Domain 2: Tool Design & MCP Integration
 
 **配点 18%** — Task 2.1〜2.5
 
-> このページのコンテンツは Step 3 で移植予定です。
-
 ## 2.1 効果的なツール記述設計
+
+<Callout type="warning" emoji="🔑">
+**Tool description はツール選択の唯一の主要機構**
+
+LLM は description を使ってツールを選択する。最小限の説明は類似ツール間の信頼性を低下させる。**良い description には ① 入力フォーマット ② クエリの例 ③ エッジケース ④ 類似ツールとの境界** を含める。
+</Callout>
+
+| ❌ 最小限（試験の誤答パターン） | ✅ 良い記述 |
+|---|---|
+| `get_customer`: "Retrieves customer information"<br/>`lookup_order`: "Retrieves order details"<br/>→ 類似 identifier format で誤選択発生 | `get_customer`: "顧客 ID またはメールでアカウントを検索・確認。返金・変更処理の前に必ず呼ぶ。注文照会には lookup_order を使うこと"<br/>→ 境界・使い分けが明確 |
 
 ## 2.2 構造化エラーレスポンス
 
-## 2.3 ツール粒度設計
+| `errorCategory` | 説明 | `isRetryable` |
+|---|---|:---:|
+| `transient` | タイムアウト・サービス一時停止 | `true` |
+| `validation` | 不正な入力・形式エラー | `false` |
+| `permission` | 権限不足・アクセス拒否 | `false` |
+| `business` | ポリシー違反（$500 超の返金等） | `false` |
+
+<Callout type="error" emoji="⚠️">
+**access failure vs valid empty result の区別（頻出）**
+
+- **access failure**（タイムアウト）→ `isRetryable: true` でエラーを明示的に返す
+- **valid empty result**（マッチなし）→ 成功として空リストを返す
+
+混同するとコーディネーターが誤判断。「空リストを成功で返す」は anti-pattern。
+</Callout>
+
+## 2.3 ツール粒度設計（fine-grained vs coarse-grained）
+
+ツール設計でしばしば問われるのが「粒度」の判断です。「1 つの大きなツール」と「複数の小さなツール」のどちらが正解かは、シナリオ依存で判断する必要があります。
+
+| ❌ 粗粒度すぎ（coarse-grained） | ✅ 適切な分割 |
+|---|---|
+| `manage_customer`: "顧客の作成・読取・更新・削除をすべて行う"<br/>引数: `action: "create" \| "read" \| "update" \| "delete"`<br/>→ どの操作が呼ばれたか LLM の判断に依存。**削除を承認していないのに削除される** リスク | `get_customer`, `create_customer`, `update_customer`, `delete_customer` の 4 つに分割<br/>→ 各操作に個別に permission・hook を設定可能。`delete_customer` だけ人間承認を必須にできる |
+
+| 判断軸 | 細かく分ける（fine-grained） | まとめる（coarse-grained） |
+|---|---|---|
+| 権限管理 | 操作ごとに承認・監査を変える必要がある | 同じ権限レベルで使われる |
+| エラーハンドリング | 失敗時の挙動が操作ごとに違う | 失敗パターンが共通 |
+| LLM の呼び出し精度 | 4〜8 個程度なら選択精度が高い | 引数で分岐は誤選択の温床 |
+| retry 戦略 | テーブルスキャンとレコード更新で個別に設計 | 同一 API ラッパーで十分 |
+
+<Callout type="warning" emoji="🔑">
+**経験則：1 エージェントあたり 4〜8 ツール**
+
+マルチエージェントの場合、各サブエージェントが扱うツールは **4〜8 個に絞る**。これを超えると LLM のツール選択精度が低下する。「すべてのエージェントに全ツールを与える」は罠 9（Top 10）の典型例。
+</Callout>
 
 ## 2.4 MCP サーバー設定
 
-## 2.5 組み込みツールの選択基準
+<div className="diagram">
+  <div className="dtitle">図2-1: MCP サーバースコープ設定ファイルの場所</div>
+  <svg viewBox="0 0 680 130" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', maxWidth: '680px' }}>
+    <rect x="10" y="15" width="310" height="100" rx="9" fill="var(--d2b)" stroke="var(--d2m)" strokeWidth="1.5"/>
+    <text x="165" y="38" textAnchor="middle" fontSize="13" fontWeight="700" fill="var(--d2)">プロジェクトスコープ</text>
+    <text x="165" y="57" textAnchor="middle" fontSize="12" fill="var(--d2)" fontFamily="monospace">.mcp.json</text>
+    <text x="165" y="76" textAnchor="middle" fontSize="11" fill="#333">チーム共有・バージョン管理に含める</text>
+    <text x="165" y="93" textAnchor="middle" fontSize="11" fill="#333">本番ツール・チーム標準MCP</text>
+    <text x="165" y="110" textAnchor="middle" fontSize="11" fill="var(--d2)" fontFamily="monospace">$&#123;GITHUB_TOKEN&#125; で認証管理</text>
+    <rect x="360" y="15" width="310" height="100" rx="9" fill="var(--d3b)" stroke="var(--d3m)" strokeWidth="1.5"/>
+    <text x="515" y="38" textAnchor="middle" fontSize="13" fontWeight="700" fill="var(--d3)">ユーザースコープ</text>
+    <text x="515" y="57" textAnchor="middle" fontSize="12" fill="var(--d3)" fontFamily="monospace">~/.claude.json</text>
+    <text x="515" y="76" textAnchor="middle" fontSize="11" fill="#333">個人のみ・バージョン管理外</text>
+    <text x="515" y="93" textAnchor="middle" fontSize="11" fill="#333">実験的・個人用サーバー</text>
+    <text x="515" y="110" textAnchor="middle" fontSize="11" fill="var(--d3)">両スコープは同時利用可能</text>
+  </svg>
+</div>
 
-## MCP の 3 プリミティブ
+## 2.5 MCP の 3 プリミティブ（Academy コアコンテンツ）
 
-## MCP 高度機能
+<Callout type="info" emoji="📌">
+**MCP 3 プリミティブの使い分け**
+
+| プリミティブ | 制御者 | 用途 | 例 |
+|---|---|---|---|
+| **Tools** | モデルが制御 | アクション実行（外部 API コール・データ取得） | `get_customer`, `search_web` |
+| **Resources** | アプリが制御 | 読み取り専用データの公開・コンテンツカタログ | issue 一覧, DB スキーマ, ドキュメント階層 |
+| **Prompts** | ユーザーが制御 | 事前定義のワークフロー指示テンプレート | ドキュメントフォーマット, コードレビューフロー |
+</Callout>
+
+## MCP 高度機能（Advanced Topics コンテンツ）
+
+| 機能 | 説明 | 試験との関連 |
+|---|---|---|
+| Sampling | MCP サーバーがクライアント経由で LLM 呼び出しを要求する仕組み。**本来の設計意図は「サーバー側で LLM が必要だが、API 契約・モデル選択・コスト負担はクライアント側に委譲する」というアーキテクチャ上の責務分離**。副次効果としてサーバー実装者が API キー管理から解放される | D1 のサブエージェント設計と関連 |
+| Progress / Log 通知 | 長時間処理のリアルタイムフィードバック。context オブジェクトと logging コールバック | D5 のコンテキスト管理と関連 |
+| Roots | 特定ディレクトリへのアクセス許可。セキュリティ境界とファイル探索の効率化 | D2 ツール設計の原則に関連 |
+| Transport 選択 | STDIO（ローカル / 標準 I/O）vs StreamableHTTP（SSE・セッション管理・水平スケール） | 試験範囲外（インフラ詳細） |
+
+## 組み込みツールの選択基準
+
+| ツール | 用途 | 選ぶべき場面 |
+|---|---|---|
+| `Grep` | ファイル内容の検索 | 関数名・エラーメッセージ・import のパターン検索 |
+| `Glob` | ファイルパスのマッチング | 拡張子・名前でファイルを検索（例: `**/*.test.tsx`） |
+| `Edit` | ユニークテキストで部分編集 | 明確にユニークな箇所の修正（失敗時は Read+Write にフォールバック） |
+| `Read+Write` | ファイル全体の操作 | Edit が非ユニークテキストで失敗した場合のフォールバック |
+| `Bash` | コマンド実行 | ビルド・テスト・スクリプト実行 |
