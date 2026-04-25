@@ -1,22 +1,109 @@
 ---
 title: 'Domain 4: Prompt Engineering & Structured Output'
-description: 明示的基準・Few-shot prompting・JSON Schema 構造化出力・リトライループ・Batch API の使い分け・マルチパスレビュー（配点 20%）。
+description: 明示的な基準・Few-shot prompting・tool_use + JSON Schema・retry-with-error-feedback・Message Batches API・マルチインスタンスレビュー（配点 20%）。
 ---
+
+import { Callout } from 'nextra/components'
 
 # Domain 4: Prompt Engineering & Structured Output
 
 **配点 20%** — Task 4.1〜4.6
 
-> このページのコンテンツは Step 3 で移植予定です。
-
 ## 4.1 明示的な基準で精度を上げる
+
+| ❌ 曖昧な指示（効果なし） | ✅ 明示的なカテゴリ基準 |
+|---|---|
+| 「保守的に報告してください」<br/>「高信頼度の発見のみ報告する」<br/>「be conservative」<br/>→ LLM には意味をなさず精度向上しない | 「コメントが実際のコード動作と矛盾する場合のみフラグ」<br/>「スタイル問題はスキップ、バグとセキュリティのみ報告」<br/>各 severity レベルにコード例を提示 |
+
+<Callout type="info" emoji="📌">
+**false positive 率が高いカテゴリへの対処**
+
+false positive 率が高いカテゴリは一時的に無効にしてそのカテゴリのプロンプトを改善する間、開発者の信頼を維持する。高い false positive カテゴリは正確なカテゴリへの信頼も損なう。
+</Callout>
 
 ## 4.2 Few-shot prompting
 
-## 4.3 tool_use + JSON Schema で構造化出力
+| 使いどころ | 例 | 例示するもの |
+|---|---|---|
+| 一貫したフォーマット出力が必要 | コードレビューの出力フォーマット統一 | location・issue・severity・suggested fix の形式 |
+| 曖昧なシナリオの判断基準 | ツール選択の境界ケース | なぜ A 選択肢ではなく B を選んだか（理由付き） |
+| 抽出タスクのハルシネーション削減 | 多様な文書構造からの抽出 | inline citation と bibliography で異なる処理例 |
+
+## 4.3 `tool_use` + JSON Schema で構造化出力
+
+<div className="diagram">
+  <div className="dtitle">図4-1: tool_choice 3 設定値の違い</div>
+  <svg viewBox="0 0 680 110" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', maxWidth: '680px' }}>
+    <rect x="10" y="10" width="210" height="90" rx="8" fill="var(--d4b)" stroke="var(--d4m)" strokeWidth="1.5"/>
+    <text x="115" y="32" textAnchor="middle" fontSize="12" fontWeight="700" fill="var(--d4)" fontFamily="monospace">"auto"</text>
+    <text x="115" y="52" textAnchor="middle" fontSize="11" fill="#993C1D">ツールかテキストか</text>
+    <text x="115" y="68" textAnchor="middle" fontSize="11" fill="#993C1D">モデルが自由選択</text>
+    <text x="115" y="90" textAnchor="middle" fontSize="10" fill="var(--d4)" fontStyle="italic">構造化出力の保証なし</text>
+    <rect x="235" y="10" width="210" height="90" rx="8" fill="var(--d3b)" stroke="var(--d3m)" strokeWidth="1.5"/>
+    <text x="340" y="32" textAnchor="middle" fontSize="12" fontWeight="700" fill="var(--d3)" fontFamily="monospace">"any"</text>
+    <text x="340" y="52" textAnchor="middle" fontSize="11" fill="#854F0B">必ずいずれかのツールを呼ぶ</text>
+    <text x="340" y="68" textAnchor="middle" fontSize="11" fill="#854F0B">どれを選ぶかはモデル</text>
+    <text x="340" y="90" textAnchor="middle" fontSize="10" fill="var(--d3)" fontStyle="italic">ツール呼び出し保証あり</text>
+    <rect x="460" y="10" width="210" height="90" rx="8" fill="var(--d2b)" stroke="var(--d2m)" strokeWidth="1.5"/>
+    <text x="565" y="32" textAnchor="middle" fontSize="12" fontWeight="700" fill="var(--d2)" fontFamily="monospace">forced</text>
+    <text x="565" y="50" textAnchor="middle" fontSize="10" fill="var(--d2)" fontFamily="monospace">{'{"type":"tool","name":"..."}'}</text>
+    <text x="565" y="68" textAnchor="middle" fontSize="11" fill="var(--d2)">特定ツールを強制実行</text>
+    <text x="565" y="90" textAnchor="middle" fontSize="10" fill="var(--d2)" fontStyle="italic">特定ツールの実行保証</text>
+  </svg>
+</div>
+
+<Callout type="warning" emoji="🔑">
+**JSON Schema 設計の重要原則**
+
+1. **`tool_use` は JSON 構文エラーをなくす** が、意味エラー（line items の合計 ≠ 総額等）は残る
+2. **nullable フィールド**：情報が存在しないかもしれないフィールドは optional 化 → required にすると幻覚が発生
+3. **`enum + "other"` パターン**：`"other"` 値 + detail フィールドで拡張可能なカテゴリを設計
+4. **`"unclear"` 値**：曖昧なケース用の enum 値を追加してモデルに選択肢を与える
+</Callout>
 
 ## 4.4 バリデーション・リトライ・フィードバックループ
 
+```ts
+// retry-with-error-feedback パターン
+const result = await extractWithSchema(document);
+const errors = validateSchema(result);
+
+if (errors.length > 0) {
+  // ✅ 元のドキュメント + 失敗した抽出結果 + 具体的なエラーを追加して再送
+  const retry = await extractWithFeedback({
+    document,
+    failedExtraction: result,
+    validationErrors: errors  // 具体的なエラーが重要
+  });
+}
+// ❌ リトライが効果ない場合：情報がそもそもドキュメントに存在しない
+// → 情報不在はフォーマットエラーと違い、リトライで解決しない
+```
+
 ## 4.5 Message Batches API の使い分け
 
+| ✅ Batch API が適する（非同期・レイテンシ耐性あり） | ❌ 同期 API が必要（ブロッキング） |
+|---|---|
+| 翌朝レビューの技術的負債レポート<br/>週次セキュリティ監査<br/>夜間テスト生成<br/>→ 50% コスト削減・最大 24 時間・SLA 保証なし・**エージェンティックループ非対応** | pre-merge ブロッキングチェック<br/>ユーザー向けリアルタイム抽出<br/>→ 開発者・ユーザーが結果を待っている<br/>SLA 保証なしの Batch API は使えない |
+
+<Callout type="warning" emoji="📌">
+**Batch API の「multi-turn 制約」を正確に理解する**
+
+「マルチターン tool calling 非対応」という記述は誤解を招きやすいため、より正確には **「エージェンティックループ非対応」**。
+
+**正確な仕様：**
+
+- バッチ内の各リクエストは **1 回のメッセージ生成** で完結する（1 往復のみ）
+- リクエスト内に user / assistant が交互に並んだ **multi-turn の会話履歴を含めることは可能**
+- しかし、tool_use → ツール実行 → 結果を返して継続、という **エージェンティックループはバッチでは展開できない**（ツール実行をバッチが代行する仕組みがないため）
+
+つまり「ツール呼び出しを含むワークフローは Batch ではなく同期 API で」が正しい判断基準。試験では「pre-merge チェックに Batch」「リアルタイム抽出に Batch」の両方が誤答として出ます。
+</Callout>
+
 ## 4.6 マルチインスタンス・マルチパスレビュー
+
+| パターン | 説明 | 理由 |
+|---|---|---|
+| 独立インスタンスレビュー | 生成したコードを別の Claude インスタンスでレビュー | 生成セッションは推論コンテキストを保持し自己批判が困難 |
+| マルチパスレビュー | ① ファイル別ローカル分析パス + ② クロスファイル統合パス | 一度に全ファイルを処理すると attention dilution で矛盾発生 |
+| 信頼スコア付き検証 | 各 finding に信頼スコアを自己報告させてルーティング | レビューリソースを効率的に配分 |
