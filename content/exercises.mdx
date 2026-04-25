@@ -385,9 +385,11 @@ model: sonnet
 ```
 
 ```jsonc
-// .mcp.json（チーム共有・トークンは必ず環境変数で）
+// .mcp.json — stdio + Streamable HTTP の混在例
+// stdio（ローカル subprocess）と Streamable HTTP（hosted MCP）は同じ .mcp.json で混在 OK
 {
   "mcpServers": {
+    // stdio: ローカル subprocess を npx で起動
     "github": {
       "command": "npx",
       "args": ["@modelcontextprotocol/server-github"],
@@ -395,16 +397,19 @@ model: sonnet
         "GITHUB_TOKEN": "${GITHUB_TOKEN}"
       }
     },
-    "linear": {
-      "command": "npx",
-      "args": ["@linear/mcp-server"],
-      "env": {
-        "LINEAR_API_KEY": "${LINEAR_API_KEY}"
+    // Streamable HTTP: hosted MCP（2025-11-25 spec の remote 公式形式）
+    "atlassian": {
+      "url": "https://mcp.atlassian.com/v1",
+      "transport": "http",
+      "headers": {
+        "Authorization": "Bearer ${ATLASSIAN_TOKEN}"
       }
     }
   }
 }
 ```
+
+> **Transport の選び方**: ローカルツール（git, FS, DB の dev）は stdio、SaaS 連携は Streamable HTTP が原則。詳しくは [D2 §2.4 Transport の選択](/d2-tool-mcp#transport-の選択stdio--streamable-http) を参照。「SSE 単独 transport」は deprecated なので新規実装では選ばない（試験頻出区別ポイント）。
 
 ```md
 <!-- CLAUDE.local.md（個人 override・gitignore 対象） -->

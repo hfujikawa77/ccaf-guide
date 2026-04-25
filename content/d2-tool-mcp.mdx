@@ -62,6 +62,8 @@ LLM は description を使ってツールを選択する。最小限の説明は
 
 ## 2.4 MCP サーバー設定
 
+### スコープ：プロジェクト vs ユーザー
+
 <div className="diagram">
   <div className="dtitle">図2-1: MCP サーバースコープ設定ファイルの場所</div>
   <svg viewBox="0 0 680 130" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', maxWidth: '680px' }}>
@@ -79,6 +81,64 @@ LLM は description を使ってツールを選択する。最小限の説明は
     <text x="515" y="110" textAnchor="middle" fontSize="11" fill="var(--d3)">両スコープは同時利用可能</text>
   </svg>
 </div>
+
+### Transport の選択（stdio / Streamable HTTP）
+
+MCP 仕様 **2025-11-25 では公式 transport が 2 種類**：`stdio` と `Streamable HTTP`。**第 3 の transport「HTTP+SSE 単独」は旧仕様（2024-11-05）の方式で、現在は deprecated**（後方互換目的で残存。新規実装では選ばない）。
+
+| Transport | 用途 | 実装形態 | `.mcp.json` の指定 | 推奨度 |
+|---|---|---|---|---|
+| **stdio** | ローカル MCP サーバー | npx 等で立ち上げる subprocess（stdin/stdout 経由 JSON-RPC） | `command` + `args` + `env` | ✅ ローカル開発・CLI ツール統合の第一選択 |
+| **Streamable HTTP** | リモート / hosted MCP サーバー | 単独の HTTP サーバー（POST + 必要に応じて SSE で stream） | `url` + `transport: "http"` | ✅ 2025-11-25 spec の remote 公式標準。新規実装はこれ |
+| **HTTP+SSE 単独** | 旧仕様の hosted MCP | 単独 SSE エンドポイント | `url` + （旧クライアントが SSE を仮定） | ⚠️ **deprecated**（2024-11-05 仕様の遺物） |
+
+<Callout type="warning" emoji="🔍">
+**Streamable HTTP と「SSE 単独 transport」は別物**
+
+Streamable HTTP は「HTTP POST + 必要に応じて SSE で stream」という構造で、**SSE をオプション機能として内包する transport**。一方「SSE 単独 transport」は POST せず SSE だけで通信していた旧 transport。**試験で SSE と HTTP の違いを問われたら、「SSE は Streamable HTTP の中で stream を返すときの形式の 1 つ。SSE 単独 transport は deprecated」** が正解。
+</Callout>
+
+**stdio の設定例（ローカル subprocess）：**
+
+```jsonc
+// .mcp.json — stdio
+{
+  "mcpServers": {
+    "github": {
+      "command": "npx",
+      "args": ["@modelcontextprotocol/server-github"],
+      "env": { "GITHUB_TOKEN": "${GITHUB_TOKEN}" }
+    }
+  }
+}
+```
+
+**Streamable HTTP の設定例（hosted / SaaS 連携）：**
+
+```jsonc
+// .mcp.json — Streamable HTTP（remote）
+{
+  "mcpServers": {
+    "atlassian": {
+      "url": "https://mcp.atlassian.com/v1",
+      "transport": "http",
+      "headers": {
+        "Authorization": "Bearer ${ATLASSIAN_TOKEN}"
+      }
+    }
+  }
+}
+```
+
+<Callout type="info" emoji="🧭">
+**選択の判断軸**
+
+- ローカルツール（git, ファイルシステム, データベースの dev インスタンス）→ **stdio**
+- SaaS 連携（Atlassian, Linear, Slack 等の hosted MCP）→ **Streamable HTTP**
+- 既存の hosted MCP が SSE 単独で公開されている → 移行を促し、当面は接続できるなら接続（deprecated 警告は出る）
+
+「全部 stdio で済ませる」は罠。SaaS 連携を stdio + 自前 proxy で実装すると、認証トークンの取り回しが複雑化し、複数クライアントから同時利用しづらくなる。
+</Callout>
 
 ## 2.5 MCP の 3 プリミティブ（Academy コアコンテンツ）
 
@@ -99,7 +159,7 @@ LLM は description を使ってツールを選択する。最小限の説明は
 | Sampling | MCP サーバーがクライアント経由で LLM 呼び出しを要求する仕組み。**本来の設計意図は「サーバー側で LLM が必要だが、API 契約・モデル選択・コスト負担はクライアント側に委譲する」というアーキテクチャ上の責務分離**。副次効果としてサーバー実装者が API キー管理から解放される | D1 のサブエージェント設計と関連 |
 | Progress / Log 通知 | 長時間処理のリアルタイムフィードバック。context オブジェクトと logging コールバック | D5 のコンテキスト管理と関連 |
 | Roots | 特定ディレクトリへのアクセス許可。セキュリティ境界とファイル探索の効率化 | D2 ツール設計の原則に関連 |
-| Transport 選択 | STDIO（ローカル / 標準 I/O）vs StreamableHTTP（SSE・セッション管理・水平スケール） | 試験範囲外（インフラ詳細） |
+| Transport 選択 | stdio（ローカル subprocess）vs Streamable HTTP（remote）の 2 種が公式。詳細は [§2.4 Transport の選択](#transport-の選択stdio--streamable-http) を参照 | D2 ツール設計の原則と直結 |
 
 ## 組み込みツールの選択基準
 
