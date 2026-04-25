@@ -1,10 +1,102 @@
 ---
 title: Anthropic Academy
-description: CCA-F 試験対策のための Anthropic Academy コース完全ガイドと推奨受講順序。
+description: CCA-F 試験対策のための Anthropic Academy コース完全ガイド。推奨受講順序と各コースの優先度、最大活用法を解説。
 ---
+
+import { Callout } from 'nextra/components'
 
 # Anthropic Academy — コース完全ガイド
 
-`anthropic.skilljar.com` で全コース無料受講可能。試験準備のために受講すべき優先順位を整理します。
+[`anthropic.skilljar.com`](https://anthropic.skilljar.com) で全コース無料受講可能。試験準備のために受講すべき優先順位を示します。
 
-> このページのコンテンツは Step 3 で移植予定です。
+<Callout type="warning" emoji="🎯">
+**CCA 試験対策の推奨受講順序**
+
+1. **Building with the Claude API**（8 時間以上 — 最重要）
+2. **Introduction to MCP**（MCP の 3 プリミティブ）
+3. **MCP Advanced Topics**（transport・sampling・notifications）
+4. **Claude Code in Action**（1 時間 — Domain 3 の核心）
+5. **Introduction to Agent Skills**（Skills 設定の詳細）
+6. **Introduction to Subagents**（サブエージェント設計）
+7. **Claude 101**（基礎確認・スキップ可）
+</Callout>
+
+## 必須コース
+
+### Building with the Claude API <span style={{ color: '#dc2626', fontSize: '0.7em', fontWeight: 700 }}>必須</span>
+
+84 講義・8 時間以上。API の基礎からエージェント・ワークフローまで。**試験の核心コース**。
+
+**カリキュラム**: API 認証 → 会話管理 → システムプロンプト → Prompt Engineering → Tool use → RAG → Extended thinking → Prompt caching → MCP → Claude Code → エージェント / ワークフロー
+
+**カバー範囲**: D1, D2, D4
+
+### Introduction to MCP <span style={{ color: '#dc2626', fontSize: '0.7em', fontWeight: 700 }}>必須</span>
+
+MCP の tools・resources・prompts の 3 プリミティブを Python SDK で実装。MCP サーバー / クライアントをゼロから構築。
+
+**カリキュラム**: MCP 概要 → ツール定義 → Server Inspector → クライアント実装 → Resources → Prompts
+
+**カバー範囲**: D2
+
+### Claude Code in Action <span style={{ color: '#dc2626', fontSize: '0.7em', fontWeight: 700 }}>必須</span>
+
+1 時間。Claude Code の開発ワークフロー統合・SDK 概念・MCP 連携。最短で Domain 3 の核心を把握。
+
+**カリキュラム**: 他システムとの連携 → SDK 概念 → 実際の開発タスク → Coursera でも受講可
+
+**カバー範囲**: D3
+
+## 高優先コース
+
+### MCP Advanced Topics
+
+Sampling・通知・Roots（ファイルアクセス制御）・JSON メッセージ・STDIO / StreamableHTTP transport。
+
+**カリキュラム**: Sampling → Log/Progress 通知 → Roots → JSON メッセージ → STDIO トランスポート → StreamableHTTP トランスポート
+
+**カバー範囲**: D2
+
+### Introduction to Agent Skills
+
+Skills の作成・設定・チーム配布・トラブルシューティング。SKILL.md フロントマターの詳細。
+
+**カリキュラム**: Skills 作成 → フロントマター設定 → チーム配布 → 問題解決
+
+**カバー範囲**: D3
+
+### Introduction to Subagents
+
+Claude Code のサブエージェント機能。`/agents` コマンド・コンテキスト分離・タスク委譲パターン。
+
+**カリキュラム**: サブエージェントの仕組み → カスタムサブエージェント作成 → 効果的な設計 → 使い所
+
+**カバー範囲**: D1, D3
+
+## 中優先コース
+
+### Claude 101
+
+Claude の基本的な使い方とコア機能。試験の前提知識を素早く確認。経験者はスキップ可。
+
+### Claude Code 101
+
+Claude Code の日常的な開発ワークフローへの組み込み方。
+
+**カバー範囲**: D3
+
+## 低優先・試験範囲外
+
+### Claude with Amazon Bedrock
+
+AWS 経由での Claude 利用。試験範囲外（cloud provider 設定は Out-of-Scope）のためスキップ可。
+
+### AI Fluency / 教育者向け / 学生向け
+
+AI 活用の基本フレームワーク。非技術職向け。技術者はスキップして問題なし。
+
+<Callout type="info" emoji="💡">
+**Academy コースの最大活用法**
+
+**Building with the Claude API** は「Agents and Workflows」セクションが試験の D1 と直結します。Prompt Engineering・Tool use・MCP のセクションは D2・D4 に直結します。ただし **コースだけでは不十分**。[公式 Exam Guide 演習 1〜4](/exercises) の実装が理解を定着させます。
+</Callout>
