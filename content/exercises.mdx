@@ -15,6 +15,18 @@ import { Callout } from 'nextra/components'
 各演習には設計判断軸と参照実装が用意されています。参照実装は折り畳まれており、**まず自分で実装してから開く** ことを強く推奨します。試験で評価されるのは「コードを書ける」ではなく「設計判断ができる」かどうか。参照実装を先に見ると、判断軸を体得する機会を失います。
 </Callout>
 
+<Callout type="info" emoji="🧮">
+**モデル選択の判断軸**
+
+参照実装で使うモデルは演習ごとに使い分けています。これ自体が試験 [D5: Context Management](/d5-context) の「コスト最適化」判断と直結します。
+
+- **Sonnet で十分なケース**（演習 1・3）: 単一エージェント、定型的な抽出・ツール呼び出し、判断分岐が浅い。Sonnet 4.6 でほぼ Opus と同等の精度が出るうえコストは約 1/5
+- **Opus を要するケース**（演習 4）: マルチエージェント coordinator のような「複数の不完全な情報から合成判断する」役割。判断ミスがパイプライン全体に波及するため、coordinator のみ Opus を当て、サブエージェントは Sonnet/Haiku に下げて費用対効果を最大化
+- **Haiku を選ぶケース**（演習に未掲載）: Skill 内のフォーマット整形、ログサマリ、定型的な分類など「決まった型に押し込むだけ」のタスク
+
+**本番グレードでは日付固定版を使う**（例: `claude-sonnet-4-6-20251022`）。エイリアス `claude-sonnet-4-6` は新しいスナップショットが出ると挙動が変わる可能性があるため、再現性が必要な抽出パイプラインや CI ではバージョン固定が必須。
+</Callout>
+
 ## 演習 1: Build a Multi-Tool Agent with Escalation Logic
 
 **目標**: stop_reason 制御・構造化エラー・フックパターンを手で書いて体得する
@@ -233,6 +245,8 @@ async function runAgent(userMessage: string) {
 
 </details>
 
+> **関連**: ここで設計した `errorCategory` + `RETRY_POLICY` の構造は、[演習 4](#演習-4-design-and-debug-a-multi-agent-research-pipeline) の `SubagentFailure` 型でほぼそのまま再利用される。マルチエージェントでもサブエージェントの失敗を `transient / validation / permission / business` で分類し、コーディネーターが retry すべきか別経路を試すか判定する。
+
 ## 演習 2: Configure Claude Code for a Team Development Workflow
 
 **目標**: CLAUDE.md 階層・Skills・MCP 設定を実際のプロジェクトで構築する
@@ -250,7 +264,8 @@ async function runAgent(userMessage: string) {
 **判断軸：**
 
 - **共有可否でファイル配置を分ける**。チーム共有 → `.claude/CLAUDE.md`（git 管理下）、個人 override → `CLAUDE.local.md`（gitignore 対象）、全プロジェクト共通 → `~/.claude/CLAUDE.md`（git 外）。混同すると「新メンバーが設定を受け取れない」「個人設定がチームを汚染する」が発生
-- **`paths:` と `globs:` の関係**。公式は `paths:`、コミュニティ実装は `globs:` が確実に動く。試験は `paths:` 優先、実装で動かなければ `globs:` にフォールバック
+- **`paths:` と `globs:` の関係**。試験回答では `paths:`（公式仕様）を選ぶ。一方、実装上は `paths:` のクォート有無や YAML リスト記法が環境依存で動かない既知ケースが報告されており、未ドキュメントの `globs:` の方が安定動作するケースがある。**試験では `paths:`、本番実装で動かなければ `globs:` も試す** が現実解
+- **`user-invocable: false` ≠ `disable-model-invocation: true`**。前者は `/` メニューに **表示しない**（UI 制御）、後者はモデルが **自動で呼び出さない**（実行制御）。デプロイ系・破壊的副作用のある Skill は **両方**設定するのが安全
 - **`allowed-tools` は事前承認**。**ブロック機能ではない**。実際にツールを禁止したい場合は `.claude/settings.json` の `permissions.deny` を使う
 - **Plan mode を使う閾値**。「複数ファイル + 複数の有効なアプローチ」の両方が揃ったら plan、片方だけなら direct で十分
 
@@ -260,6 +275,9 @@ async function runAgent(userMessage: string) {
 - `~/.claude/commands/` にチーム共有のスラッシュコマンドを置いてしまい、`git clone` した新メンバーに届かない
 - Skill の `allowed-tools` を読んで「他ツールがブロックされる」と誤解する — 試験の誤答選択肢に出るパターン
 - `.mcp.json` に生のトークン (`"GITHUB_TOKEN": "ghp_..."`) を書いてリポジトリに commit する — 必ず `${GITHUB_TOKEN}` の形で環境変数展開
+- **`user-invocable: false` で自動呼出を止められる** と思い込む。これは `/` スラッシュメニューに表示しないだけの UI 制御で、モデル側からの自動起動は止まらない。実行抑止には `disable-model-invocation: true` を併用
+- **`disable-model-invocation: true` で context token を節約できる** という誤解。フラグの効果は「自動呼出抑止」だけで、Skill の name と description は system-reminder に注入され続ける。トークン節約目的の手段ではない（試験の罠候補）
+- **path-rule は Read 時のみ注入され、Write 時には注入されない**（実装上の落とし穴）。「テストファイル編集時に強制したい規約」は Read 系操作の文脈にしか効かないことに注意。試験範囲ではないが本番運用で踏むので一度知っておく価値あり
 
 <details>
 <summary><strong>参照実装を見る</strong>（自分で書いてから開くことを推奨）</summary>
@@ -389,6 +407,8 @@ model: sonnet
 - `permissions.deny` で `Bash(rm -rf:*)` のような危険コマンドを物理的にブロック。これがフックや `allowed-tools` ではなく `permissions.deny` でしか実現できない点を体感する
 
 </details>
+
+> **関連**: ここで構築した `.claude/settings.json` の `permissions.deny`・[演習 1](#演習-1-build-a-multi-tool-agent-with-escalation-logic) の Agent SDK `PostToolUse` フックは「決定論的にツール挙動を強制する」 という同じ原則の異なる実装。試験では両者の違い（Claude Code lifecycle hooks vs Agent SDK hooks）を問う問題が出る — [D3.3](/d3-claude-code#33-claude-code-フックlifecycle-hooks) と [D1.5](/d1-agentic#15-agent-sdk-フックパターン) の対比を再確認しておく。
 
 ## 演習 3: Build a Structured Data Extraction Pipeline
 
@@ -591,6 +611,8 @@ async function submitBatch(documents: { id: string; text: string }[]) {
 
 </details>
 
+> **関連**: `validateInvoice` の意味バリデーションと「失敗を context に流すリトライ」の構造は、[演習 4](#演習-4-design-and-debug-a-multi-agent-research-pipeline) の合成エージェントが受け取る `coverage_gaps` と同じ思想。「失敗を黙らせず、構造化して下流へ流す」が両演習の共通原則。
+
 ## 演習 4: Design and Debug a Multi-Agent Research Pipeline
 
 **目標**: マルチエージェントの完全実装・エラー伝播・情報出所を体得する
@@ -623,6 +645,8 @@ async function submitBatch(documents: { id: string; text: string }[]) {
 
 <details>
 <summary><strong>参照実装を見る</strong>（自分で書いてから開くことを推奨）</summary>
+
+**注意**: この演習の参照実装は **設計骨格（疑似コード混在）** です。`callSubagent`・`TaskTool`・`fakeDb` といったシンボルは未定義のまま残しており、そのままコピペでは動きません。これは演習 4 の本質が「Anthropic SDK のハンドラ詳細」ではなく「coordinator が部分的成功・競合・provenance をどう構造化するか」にあるため、判断構造を読みやすさ優先で示しています。完全に runnable な実装が必要な場合は、`Promise.allSettled` と `client.messages.create` を直接使う形に各自で詰めてください。
 
 **構成の概要**: コーディネーターが 1 レスポンスで Search / Analysis Agent を並列発行 → 部分的成功と競合を構造化して合成エージェントへ。
 
@@ -774,6 +798,8 @@ function reconcileClaims(claims: Claim[]): SynthesizedClaim[] {
 - `published_date` を必ず claim に含めるのは、新旧データの不一致と「ソースの正面衝突」を区別するため。古い記事 → 新しい記事 で値が変わるのは矛盾ではなく時系列差異
 
 </details>
+
+> **関連**: 4 演習はここで一周する。[演習 1](#演習-1-build-a-multi-tool-agent-with-escalation-logic) の `errorCategory` がここの `SubagentFailure` の核、[演習 2](#演習-2-configure-claude-code-for-a-team-development-workflow) の Skills `context: fork` がサブエージェント並列化の Claude Code 側実装、[演習 3](#演習-3-build-a-structured-data-extraction-pipeline) の retry-with-error-feedback が `coverage_gaps` を合成側に渡す思想と一致。試験のシナリオベース問題は「これらを組み合わせた状況での判断」を問うので、4 演習を完走したら一度全体を俯瞰しておく。
 
 <Callout type="info" emoji="🎯">
 4 演習をすべて手で実装すると、試験で問われる判断軸が体感的に身につきます。とくに **演習 4 のマルチエージェントは試験頻出** なので、最低 1 回は完走することを強く推奨します。
