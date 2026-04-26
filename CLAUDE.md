@@ -106,7 +106,7 @@ See `docs/glossary.md` for canonical Japanese terminology and the rule for when 
 
 ### Content improvement process
 
-For any content cleanup touching more than ~5 files (terminology, accuracy, freshness, structural), follow the five-phase loop in `docs/improvement-loop.md` (Audit → Specify → Track → Implement → Verify). The loop applies equally to user-initiated work and the quarterly auto-refresh routine.
+For any content cleanup touching more than ~5 files (terminology, accuracy, freshness, structural), follow the six-phase loop in `docs/improvement-loop.md` (Discover → Design → Plan → Implement → Verify → Merge). The loop applies equally to user-initiated work and the quarterly auto-refresh routine.
 
 ### Content coverage policy
 
