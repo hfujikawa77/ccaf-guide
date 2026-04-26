@@ -1,6 +1,6 @@
 ---
 title: 'Domain 1: Agentic Architecture & Orchestration'
-description: アジェンティックループ・マルチエージェント Hub-and-Spoke・並列／順次実行・コンテキスト渡し・Agent SDK フック・タスク分解・セッション管理（配点 27%・最重要）。
+description: エージェンティックループ・マルチエージェント Hub-and-Spoke・並列／順次実行・コンテキスト渡し・Agent SDK フック・タスク分解・セッション管理（配点 27%・最重要）。
 ---
 
 import { Callout } from 'nextra/components'
@@ -9,10 +9,10 @@ import { Callout } from 'nextra/components'
 
 **配点 27%（最重要）** — Task 1.1〜1.7
 
-## 1.1 アジェンティックループの実装
+## 1.1 エージェンティックループの実装
 
 <div className="diagram">
-  <div className="dtitle">図1-1: 正しいアジェンティックループ制御フロー</div>
+  <div className="dtitle">図1-1: 正しいエージェンティックループ制御フロー</div>
   <svg viewBox="0 0 680 320" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', maxWidth: '680px' }}>
     <rect x="250" y="10" width="180" height="44" rx="8" fill="var(--d1b)" stroke="var(--d1m)" strokeWidth="1.5"/>
     <text x="340" y="28" textAnchor="middle" fontSize="12" fontWeight="600" fill="var(--d1)">Claude APIリクエスト</text>
@@ -49,7 +49,7 @@ import { Callout } from 'nextra/components'
 </div>
 
 ```ts
-// 正しいアジェンティックループ（TypeScript）
+// 正しいエージェンティックループ（TypeScript）
 const messages: Message[] = [...];
 while (true) {
   const response = await client.messages.create({ model, tools, messages });

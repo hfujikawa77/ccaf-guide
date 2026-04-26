@@ -21,6 +21,7 @@ Canonical Japanese-language terminology for `content/*.mdx`. Apply consistently.
 | サブエージェント | sub-agent |
 | コーディネーター | coordinator |
 | エスカレーション | escalation |
+| エージェンティック | agentic |
 | リトライ | retry |
 | フォールバック | fallback |
 | キャリブレーション不良 | calibration deficiency |
@@ -59,6 +60,7 @@ Canonical Japanese-language terminology for `content/*.mdx`. Apply consistently.
 | Forbidden | Use instead |
 |---|---|
 | `ボーリアン` | `ブーリアン` |
+| `アジェンティック` | `エージェンティック` (consistent with エージェント) |
 | `インフィニットリトライ` | `無限リトライループ` |
 | `文脈` (when meaning LLM context window) | `コンテキスト` |
 | `プロベナンス` | `出所情報` |

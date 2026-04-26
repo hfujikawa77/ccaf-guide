@@ -34,7 +34,7 @@ import { Callout } from 'nextra/components'
 **カバー**: D1 / D2 / D5
 
 1. MCP tools を 3〜4 本定義。**少なくとも 2 本は類似機能を持つツールを作り、description で明確に区別**（ここが試験で問われる）
-2. stop_reason を検査してループを継続 / 終了するアジェンティックループを実装。`"tool_use"` → 継続、`"end_turn"` → 終了
+2. stop_reason を検査してループを継続 / 終了するエージェンティックループを実装。`"tool_use"` → 継続、`"end_turn"` → 終了
 3. ツールに構造化エラーレスポンスを追加：`errorCategory`（transient / validation / permission）+ `isRetryable` ブーリアン + 説明。各エラータイプでエージェントが適切に対応することをテスト
 4. ビジネスルール強制フックを実装。例：$500 超の返金をブロックして人間エスカレーションへリダイレクト
 5. 複数課題のリクエスト（例：「返金と住所変更を同時に」）でテスト。エージェントが課題を分解して並列処理し、統合レスポンスを返すことを確認
@@ -207,7 +207,7 @@ async function dispatchTool(name: string, input: ToolInput): Promise<unknown> {
   }
 }
 
-// 5. アジェンティックループ — stop_reason 駆動・並列 tool_use 対応
+// 5. エージェンティックループ — stop_reason 駆動・並列 tool_use 対応
 async function runAgent(userMessage: string) {
   const messages: Anthropic.MessageParam[] = [{ role: 'user', content: userMessage }]
 

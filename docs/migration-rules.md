@@ -99,7 +99,7 @@ SVG figures in the original HTML are inlined verbatim inside MDX. Wrap each with
 
 ```mdx
 <div className="diagram">
-  <div className="dtitle">図1-1: 正しいアジェンティックループ制御フロー</div>
+  <div className="dtitle">図1-1: 正しいエージェンティックループ制御フロー</div>
   <svg viewBox="0 0 680 320" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', maxWidth: '680px' }}>
     <rect x="250" y="10" width="180" height="44" rx="8" fill="var(--d1b)" stroke="var(--d1m)" strokeWidth="1.5"/>
     <text x="340" y="28" textAnchor="middle" fontSize="12" fontWeight="600" fill="var(--d1)">Claude APIリクエスト</text>
