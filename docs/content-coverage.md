@@ -38,6 +38,6 @@ When you add a rule, also add the corresponding grep command to the audit log in
 
 ## See also
 
-- `docs/improvement-loop.md` — the five-phase content cleanup loop this policy plugs into
+- `docs/improvement-loop.md` — the six-phase content cleanup loop this policy plugs into
 - `docs/glossary.md` — terminology that all content must follow
 - `docs/migration-rules.md` — HTML → MDX conversion rules
