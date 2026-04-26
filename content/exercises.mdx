@@ -20,11 +20,11 @@ import { Callout } from 'nextra/components'
 
 参照実装で使うモデルは演習ごとに使い分けています。これ自体が試験 [D5: Context Management](/d5-context) の「コスト最適化」判断と直結します。
 
-- **Sonnet で十分なケース**（演習 1・3）: 単一エージェント、定型的な抽出・ツール呼び出し、判断分岐が浅い。Sonnet 4.6 でほぼ Opus と同等の精度が出るうえコストは約 1/5
+- **Sonnet で十分なケース**（演習 1・3）: 単一エージェント、定型的な抽出・ツール呼び出し、判断の分岐が少ない。Sonnet 4.6 でほぼ Opus と同等の精度が出るうえコストは約 1/5
 - **Opus を要するケース**（演習 4）: マルチエージェント coordinator のような「複数の不完全な情報から合成判断する」役割。判断ミスがパイプライン全体に波及するため、coordinator のみ Opus を当て、サブエージェントは Sonnet/Haiku に下げて費用対効果を最大化
 - **Haiku を選ぶケース**（演習に未掲載）: Skill 内のフォーマット整形、ログサマリ、定型的な分類など「決まった型に押し込むだけ」のタスク
 
-**本番グレードでは日付固定版を使う**（例: `claude-sonnet-4-6-20251022`）。エイリアス `claude-sonnet-4-6` は新しいスナップショットが出ると挙動が変わる可能性があるため、再現性が必要な抽出パイプラインや CI ではバージョン固定が必須。
+**本番運用では日付固定版を使う**（例: `claude-sonnet-4-6-20251022`）。エイリアス `claude-sonnet-4-6` は新しいスナップショットが出ると挙動が変わる可能性があるため、再現性が必要な抽出パイプラインや CI ではバージョン固定が必須。
 </Callout>
 
 ## 演習 1: Build a Multi-Tool Agent with Escalation Logic
@@ -35,7 +35,7 @@ import { Callout } from 'nextra/components'
 
 1. MCP tools を 3〜4 本定義。**少なくとも 2 本は類似機能を持つツールを作り、description で明確に区別**（ここが試験で問われる）
 2. stop_reason を検査してループを継続 / 終了するアジェンティックループを実装。`"tool_use"` → 継続、`"end_turn"` → 終了
-3. ツールに構造化エラーレスポンスを追加：`errorCategory`（transient / validation / permission）+ `isRetryable` ボーリアン + 説明。各エラータイプでエージェントが適切に対応することをテスト
+3. ツールに構造化エラーレスポンスを追加：`errorCategory`（transient / validation / permission）+ `isRetryable` ブーリアン + 説明。各エラータイプでエージェントが適切に対応することをテスト
 4. ビジネスルール強制フックを実装。例：$500 超の返金をブロックして人間エスカレーションへリダイレクト
 5. 複数課題のリクエスト（例：「返金と住所変更を同時に」）でテスト。エージェントが課題を分解して並列処理し、統合レスポンスを返すことを確認
 
@@ -43,10 +43,10 @@ import { Callout } from 'nextra/components'
 
 **判断軸：**
 
-- **ツール description が選択の唯一の根拠**。`get_customer` と `lookup_order` のように似た形式の identifier を扱うツールでは、「アカウント確認 → get_customer、注文照会 → lookup_order」のような **境界線を 1 文入れる**。これを書かないと 4〜5 個目から誤選択が増える
-- **errorCategory ごとに retry 判断を切り替える**。`transient` のみ `isRetryable: true`、`validation` / `permission` / `business` は LLM 判断ではなく即エスカレーションか別アクションへ。リトライ可否を LLM の自由判断に委ねない
-- **ビジネスルールは prompt ではなくフックで強制**。$500 超ブロックを CLAUDE.md やシステムプロンプトに書くのは罠（非ゼロの失敗率が残る）。`PostToolUse` フックで決定論的に介入し、`{ blocked: true, redirect: 'escalate_to_human' }` のような構造化レスポンスを返してエージェントに次手を示す
-- **複数課題は 1 レスポンス内の並列 tool_use**。「返金 + 住所変更」を別ターンに分けるとレイテンシが線形に伸び、後段で context が欠ける。1 つのアシスタントレスポンス内に複数 `tool_use` ブロックを詰めれば並列実行される
+- **ツール description が選択の唯一の根拠**。`get_customer` と `lookup_order` のように似た形式の identifier を扱うツールでは、「アカウント確認 → get_customer、注文照会 → lookup_order」のような **境界線を 1 文添える**。これを書かないと 4〜5 個目から誤選択が増える
+- **errorCategory ごとに retry 判断を切り替える**。`transient` のみ `isRetryable: true`、`validation` / `permission` / `business` は LLM 判断ではなく即エスカレーションか別アクションへ。リトライ可否を LLM に委ねない
+- **ビジネスルールは prompt ではなくフックで強制**。$500 超ブロックを CLAUDE.md やシステムプロンプトに書くのは罠（非ゼロの失敗率が残る）。`PostToolUse` フックで決定論的に介入し、`{ blocked: true, redirect: 'escalate_to_human' }` のような構造化レスポンスを返してエージェントに次のアクションを提示する
+- **複数課題は 1 レスポンス内の並列 tool_use**。「返金 + 住所変更」を別ターンに分けるとレイテンシが線形に増加し、後段で context が欠ける。1 つのアシスタントレスポンス内に複数 `tool_use` ブロックを含めれば並列実行される
 
 **詰まりやすい箇所：**
 
@@ -243,7 +243,7 @@ async function runAgent(userMessage: string) {
         })
       )
 
-      // tool_result は user ロールに詰めて返す（ここを assistant にすると壊れる）
+      // tool_result は user ロールに含めて返す（ここを assistant にすると正しく動作しない）
       messages.push({ role: 'user', content: toolResults })
       continue
     }
@@ -255,7 +255,7 @@ async function runAgent(userMessage: string) {
 
 **設計上のポイント**
 
-- `RETRY_POLICY` を別テーブルにしているのは、新しいエラーカテゴリを足しても retry 判断が散らばらないようにするため。マジックナンバーを ​1 箇所に集約する harness パターン
+- `RETRY_POLICY` を別テーブルにしているのは、新しいエラーカテゴリを足しても retry 判断が散らばらないようにするため。マジックナンバーを ​1 箇所に集約するエージェントハーネス（agent harness）
 - `postToolUseHook` の戻り値が `blocked: true, redirect: ..., input_for_redirect: ...` を含むのは、LLM が「次に何のツールを呼ぶべきか」を推論なしで判断できるようにするため。ヒントを構造化して渡す
 - `dispatchTool` 内で `TimeoutError` のみ `transient` として捕捉している。それ以外の例外はそのまま投げて上層で捕捉 — 「全例外を transient 扱いする」と permission や validation のリトライループに陥る
 
@@ -439,8 +439,8 @@ model: sonnet
 
 **設計上のポイント**
 
-- `.claude/CLAUDE.md` は **常時ロード**、`.claude/rules/*.md` は **glob 一致時のみロード**。常時ロードを肥大化させない（attention dilution の予防）
-- Skill の `disable-model-invocation: true` は副作用持ち Skill（リリースノート生成・デプロイ・コミット）に必ず付ける。明示的に `/release-note` を呼んだときだけ実行されるようになり、誤発火を防げる
+- `.claude/CLAUDE.md` は **常時ロード**、`.claude/rules/*.md` は **glob 一致時のみロード**。常時ロードを肥大化させない（注意分散 (attention dilution) の予防）
+- Skill の `disable-model-invocation: true` は副作用のある Skill（リリースノート生成・デプロイ・コミット）に必ず付ける。明示的に `/release-note` を呼んだときだけ実行されるようになり、誤発火を防げる
 - `permissions.deny` で `Bash(rm -rf:*)` のような危険コマンドを物理的にブロック。これがフックや `allowed-tools` ではなく `permissions.deny` でしか実現できない点を体感する
 
 </details>
@@ -453,7 +453,7 @@ model: sonnet
 
 **カバー**: D4 / D5
 
-1. required / optional / nullable 混在の JSON schema を持つ抽出ツールを定義。情報が存在しないかもしれないフィールドは nullable 化。ドキュメントに情報がない場合にモデルが null を返すことを確認（幻覚しないこと）
+1. required / optional / nullable 混在の JSON schema を持つ抽出ツールを定義。情報が存在しないかもしれないフィールドは nullable 化。ドキュメントに情報がない場合にモデルが null を返すことを確認（ハルシネーション (hallucination) しないこと）
 2. バリデーション失敗時の retry-with-error-feedback ループを実装。元ドキュメント・失敗した抽出・具体的なバリデーションエラーを含めて再送。フォーマットエラー（リトライ有効）vs 情報不在（リトライ無効）を区別
 3. 多様な文書構造（inline citation vs bibliography、narrative vs structured table）を処理する few-shot examples を追加
 4. Message Batches API で 100 件処理。`custom_id` で失敗文書を特定し、修正（大きすぎる文書はチャンク分割）して再送。処理時間と SLA 制約を計算
@@ -463,18 +463,18 @@ model: sonnet
 
 **判断軸：**
 
-- **「存在しないかもしれないフィールド」は nullable**、required にしない。required にするとモデルが値を捏造する（幻覚）。`type: ["string", "null"]` で明示し、システムプロンプトで「不明な場合は null」を促す
+- **「存在しないかもしれないフィールド」は nullable**、required にしない。required にするとモデルが値を捏造する（ハルシネーション）。`type: ["string", "null"]` で明示し、システムプロンプトで「不明な場合は null」を促す
 - **enum + `"other"` パターン**。事前に列挙できない値は `"other"` を enum に含め、`category_detail` のような自由記述フィールドを併設する。`"unclear"` 値も同様で、判定不能ケースを LLM に正直に表明させる
-- **リトライしていいエラーの見分け**。`tool_use` で構文は守られるが意味エラー（合計値の不一致など）は残る。バリデータが `validation` エラーを返す → リトライ可。情報がそもそもドキュメントに無い → リトライしても解決しない（無限ループ）
+- **リトライしていいエラーの見分け**。`tool_use` で構文は守られるが意味エラー（合計値の不一致など）は残る。バリデータが `validation` エラーを返す → リトライ可。情報がそもそもドキュメントに無い → リトライしても解決しない（無限リトライループ）
 - **Batch API はエージェンティックループ非対応**。1 リクエスト = 1 往復。`tool_use` を含む抽出は OK だが、ループは展開できない。SLA 必須・ブロッキング処理には同期 API を使う
 
 **詰まりやすい箇所：**
 
-- 「全フィールド required にして安全側に倒す」 → モデルが捏造する（幻覚の主要原因）
+- 「全フィールド required にして安全側に倒す」 → モデルが捏造する（ハルシネーションの主要原因）
 - pre-merge ブロッキングチェックに Batch API を使う（SLA 保証なし、最大 24 時間）
 - 情報不在ケースを「frame を変えれば見つかるかも」と何度もリトライ
 - `custom_id` を付けず、Batch のレスポンスをドキュメントに紐付けられない（失敗時に再送できない）
-- 信頼スコアを LLM に「自己報告」させて閾値ルーティングに使う — 自己報告型は校正不良。複数モデル合議や rule-based の補助スコアが必要
+- 信頼スコアを LLM に「自己報告」させて閾値ルーティングに使う — 自己報告型は校正不良。アンサンブル（複数モデル合議）や rule-based の補助スコアが必要
 
 ### 完了基準（Definition of Done）
 
@@ -485,7 +485,7 @@ model: sonnet
 - [ ] 情報が存在しないドキュメントで nullable フィールドが `null` を返す（モデルが値を捏造しない）
 - [ ] `tool_choice: { type: 'tool', name: '...' }` で抽出ツール呼び出しが強制される
 - [ ] バリデーション失敗時、retry-with-error-feedback ループで具体的なエラーを context に含めて修正される
-- [ ] 「フォーマットエラー（リトライ有効）」と「情報不在（リトライ無効）」が区別され、無限ループに陥らない
+- [ ] 「フォーマットエラー（リトライ有効）」と「情報不在（リトライ無効）」が区別され、無限リトライループに陥らない
 - [ ] Few-shot examples で inline citation / bibliography 等の異なる文書構造をハンドリングできる
 - [ ] Batch API で 100 件投入し、`custom_id` で失敗ドキュメントを特定して再送できる
 - [ ] line_item ごとの confidence で低信頼項目が人間レビューにルーティングされる
@@ -632,7 +632,7 @@ ${lastIssues.map(i => `- ${i.path}: ${i.reason}`).join('\n')}
     lastIssues = issues
   }
 
-  // ❌ Anti-pattern: ここで「情報不在」だった場合に永久リトライ
+  // ❌ Anti-pattern: ここで「情報不在」だった場合に無限リトライループ
   // ✅ 上限到達 → 人間レビューへ
   return { ok: false as const, partial: lastResult, issues: lastIssues }
 }
@@ -658,7 +658,7 @@ async function submitBatch(documents: { id: string; text: string }[]) {
 **設計上のポイント**
 
 - `tool_choice: { type: 'tool', name: '...' }` で抽出ツールの呼び出しを **強制**。`auto` だとモデルがテキストで返してくる失敗モードがある
-- `validateInvoice` で意味エラー（合計値の不一致）を検出して context に流すのが retry-with-error-feedback の本質。「同じ入力で再試行」は無限ループ
+- `validateInvoice` で意味エラー（合計値の不一致）を検出して context に流すのが retry-with-error-feedback の本質。「同じ入力で再試行」は無限リトライループ
 - バッチ送信時の `custom_id` は **絶対に欠かせない**。失敗時の再送・部分的成功の合成・コスト分析のすべてで必要
 - confidence は line_item ごとに出させて、合計や請求書全体の confidence は **後段で別途計算**する（自己報告のキャリブレーション不良を緩和）
 
@@ -675,25 +675,25 @@ async function submitBatch(documents: { id: string; text: string }[]) {
 1. `allowedTools: ["Task"]` 付きコーディネーターを実装。各サブエージェントには直前の結果をプロンプトに直接含める（自動継承はない）
 2. コーディネーターが 1 レスポンスで複数の Task 呼び出しを発行して並列実行。順次実行と比較してレイテンシ改善を測定
 3. サブエージェントの出力に claim-source mapping（source URL・document 名・pub 日付・関連抜粋）を含めさせる。合成エージェントが帰属情報を保持することを確認
-4. サブエージェント timeout をシミュレート。コーディネーターが構造化エラーコンテキスト（失敗タイプ・試みたクエリ・部分結果）を受け取り、部分結果で処理を継続してカバレッジギャップを注釈付きで出力することを確認
+4. サブエージェントタイムアウトをシミュレート。コーディネーターが構造化エラーコンテキスト（失敗タイプ・試みたクエリ・部分結果）を受け取り、部分結果で処理を継続してカバレッジギャップを注釈付きで出力することを確認
 5. 2 つの信頼できるソースが競合する統計を示すシナリオでテスト。合成出力が一方を選択せずに両方を帰属付きで含め、conflict を明示的に注釈することを確認
 
 ### 設計上のポイントと詰まりやすい箇所
 
 **判断軸：**
 
-- **サブエージェント description が委譲先選択の唯一の根拠**。`search_agent: "Searches the web"` のような最小限ではなく、入力フォーマット・出力スキーマ・類似エージェントとの境界を入れる
+- **サブエージェント description が委譲先を選ぶ唯一の根拠**。`search_agent: "Searches the web"` のような最小限ではなく、入力フォーマット・出力スキーマ・類似エージェントとの境界を入れる
 - **コンテキストは自動継承されない**。ユーザーの元入力・前段の結果・制約条件 — すべて **コーディネーターがプロンプトに明示的に詰める**。試験頻出の最重要原則
-- **独立タスクは 1 レスポンス内の並列 Task 発行**。順次実行はレイテンシが線形に伸びる。後段が前段の結果に依存する場合のみ複数ターン化
+- **独立タスクは 1 レスポンス内の並列 Task 発行**。順次実行はレイテンシが線形に増加する。後段が前段の結果に依存する場合のみ複数ターン化
 - **部分的成功を採用、失敗を注釈**。1 つのサブエージェントが失敗 → 全体終了は anti-pattern。`partial_results` + `coverage_gaps` で帰属を明示
-- **競合する情報源は両方残す**。一方を任意選択するのは provenance 消失。`conflict_detected: true` で両方を帰属付きで含める
+- **競合する情報源は両方残す**。一方を任意選択するのは出所情報（provenance）の消失。`conflict_detected: true` で両方を帰属付きで含める
 
 **詰まりやすい箇所：**
 
 - サブエージェント同士を直接通信させようとする（コーディネーター経由が原則）
-- timeout を空配列で「成功」として返してしまい、コーディネーターが「結果なし」と誤解
+- タイムアウトを空配列で「成功」として返してしまい、コーディネーターが「結果なし」と誤解
 - Web 検索ツールを Synthesis Agent にも与える（4〜5 ツールを超えると選択精度が低下する罠 9）
-- 合成出力で「数値が違う 2 ソース」のうち片方だけ採用してしまい、provenance が消える
+- 合成出力で「数値が違う 2 ソース」のうち片方だけ採用してしまい、出所情報が消える
 - 並列実行のつもりで `for ... await` してしまい順次実行になる（[D1.3](/d1-agentic#13-並列-vs-順次サブエージェント実行)）
 
 ### 完了基準（Definition of Done）
@@ -705,7 +705,7 @@ async function submitBatch(documents: { id: string; text: string }[]) {
 - [ ] コーディネーターが 1 アシスタントレスポンス内で複数 Task を発行し、並列実行される
 - [ ] サブエージェントプロンプトに「元のユーザー要求」「前段の構造化出力」「制約」「出力スキーマ」がすべて明示的に詰められている
 - [ ] サブエージェント出力に `source_url`・`published_date`・関連抜粋が含まれる
-- [ ] サブエージェント timeout を `Promise.allSettled` で受け、`partial_results` が保たれる
+- [ ] サブエージェントタイムアウトを `Promise.allSettled` で受け、`partial_results` が保たれる
 - [ ] 失敗したサブエージェントが `coverage_gaps` として明示的に注釈される
 - [ ] 競合する数値（同じ metric で異なる値）が `conflict_detected: true` で両方保持される（一方を任意選択しない）
 - [ ] 順次実行と比較して並列実行のレイテンシ改善を実測できる
@@ -715,13 +715,13 @@ async function submitBatch(documents: { id: string; text: string }[]) {
 <details>
 <summary><strong>参照実装を見る</strong>（自分で書いてから開くことを推奨）</summary>
 
-**注意**: この演習の参照実装は **設計骨格（疑似コード混在）** です。`callSubagent`・`TaskTool`・`fakeDb` といったシンボルは未定義のまま残しており、そのままコピペでは動きません。これは演習 4 の本質が「Anthropic SDK のハンドラ詳細」ではなく「coordinator が部分的成功・競合・provenance をどう構造化するか」にあるため、判断構造を読みやすさ優先で示しています。完全に runnable な実装が必要な場合は、`Promise.allSettled` と `client.messages.create` を直接使う形に各自で詰めてください。
+**注意**: この演習の参照実装は **設計骨格（疑似コード混在）** です。`callSubagent`・`TaskTool`・`fakeDb` といったシンボルは未定義のまま残しており、そのままコピペでは動きません。これは演習 4 の本質が「Anthropic SDK のハンドラ詳細」ではなく「coordinator が部分的成功・競合・出所情報をどう構造化するか」にあるため、判断構造を読みやすさ優先で示しています。完全に runnable な実装が必要な場合は、`Promise.allSettled` と `client.messages.create` を直接使う形に各自で詰めてください。
 
 **構成の概要**: コーディネーターが 1 レスポンスで Search / Analysis Agent を並列発行 → 部分的成功と競合を構造化して合成エージェントへ。
 
 ```ts
 // 1. コーディネーターから並列 Task 発行
-// 1 つの assistant レスポンスの content に複数 tool_use を詰めれば並列
+// 1 つの assistant レスポンスの content に複数 tool_use を含めれば並列
 const coordinatorResponse = await client.messages.create({
   model: 'claude-opus-4-7',
   max_tokens: 8192,
@@ -855,15 +855,15 @@ function reconcileClaims(claims: Claim[]): SynthesizedClaim[] {
     }
   })
 
-  // ❌ Anti-pattern: const winner = vs[0]  // 任意選択 → provenance 消失
+  // ❌ Anti-pattern: const winner = vs[0]  // 任意選択 → 出所情報の消失
 }
 ```
 
 **設計上のポイント**
 
 - `Promise.allSettled` を使うのは部分的成功を保つため。`Promise.all` だと 1 つの reject で全体が崩れる
-- `coverage_gaps` を合成エージェントに渡すと、レポートに「この観点は調べられなかった」を明示できる。ユーザーが意思決定の不確実性を認識できる
-- 競合データの解決を **コードでも LLM でもなく「読者」に委ねる** のは意図的。CCA-F が問う provenance 保持は「機械が選ぶ」を明示的に拒否する設計
+- `coverage_gaps` を合成エージェントに渡すと、レポートに「この観点は調べられなかった」を明示できる。ユーザーが判断の不確実性を認識できる
+- 競合データの解決を **コードでも LLM でもなく「読者」に委ねる** のは意図的。CCA-F が問う出所情報の保持は「機械が選ぶ」を明示的に拒否する設計
 - `published_date` を必ず claim に含めるのは、新旧データの不一致と「ソースの正面衝突」を区別するため。古い記事 → 新しい記事 で値が変わるのは矛盾ではなく時系列差異
 
 </details>
