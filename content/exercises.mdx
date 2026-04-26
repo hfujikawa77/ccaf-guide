@@ -686,14 +686,14 @@ async function submitBatch(documents: { id: string; text: string }[]) {
 - **コンテキストは自動継承されない**。ユーザーの元入力・前段の結果・制約条件 — すべて **コーディネーターがプロンプトに明示的に詰める**。試験頻出の最重要原則
 - **独立タスクは 1 レスポンス内の並列 Task 発行**。順次実行はレイテンシが線形に増加する。後段が前段の結果に依存する場合のみ複数ターン化
 - **部分的成功を採用、失敗を注釈**。1 つのサブエージェントが失敗 → 全体終了は anti-pattern。`partial_results` + `coverage_gaps` で帰属を明示
-- **競合する情報源は両方残す**。一方を任意選択するのは provenance 消失。`conflict_detected: true` で両方を帰属付きで含める
+- **競合する情報源は両方残す**。一方を任意選択するのは出所情報（provenance）の消失。`conflict_detected: true` で両方を帰属付きで含める
 
 **詰まりやすい箇所：**
 
 - サブエージェント同士を直接通信させようとする（コーディネーター経由が原則）
 - timeout を空配列で「成功」として返してしまい、コーディネーターが「結果なし」と誤解
 - Web 検索ツールを Synthesis Agent にも与える（4〜5 ツールを超えると選択精度が低下する罠 9）
-- 合成出力で「数値が違う 2 ソース」のうち片方だけ採用してしまい、provenance が消える
+- 合成出力で「数値が違う 2 ソース」のうち片方だけ採用してしまい、出所情報が消える
 - 並列実行のつもりで `for ... await` してしまい順次実行になる（[D1.3](/d1-agentic#13-並列-vs-順次サブエージェント実行)）
 
 ### 完了基準（Definition of Done）
@@ -715,7 +715,7 @@ async function submitBatch(documents: { id: string; text: string }[]) {
 <details>
 <summary><strong>参照実装を見る</strong>（自分で書いてから開くことを推奨）</summary>
 
-**注意**: この演習の参照実装は **設計骨格（疑似コード混在）** です。`callSubagent`・`TaskTool`・`fakeDb` といったシンボルは未定義のまま残しており、そのままコピペでは動きません。これは演習 4 の本質が「Anthropic SDK のハンドラ詳細」ではなく「coordinator が部分的成功・競合・provenance をどう構造化するか」にあるため、判断構造を読みやすさ優先で示しています。完全に runnable な実装が必要な場合は、`Promise.allSettled` と `client.messages.create` を直接使う形に各自で詰めてください。
+**注意**: この演習の参照実装は **設計骨格（疑似コード混在）** です。`callSubagent`・`TaskTool`・`fakeDb` といったシンボルは未定義のまま残しており、そのままコピペでは動きません。これは演習 4 の本質が「Anthropic SDK のハンドラ詳細」ではなく「coordinator が部分的成功・競合・出所情報をどう構造化するか」にあるため、判断構造を読みやすさ優先で示しています。完全に runnable な実装が必要な場合は、`Promise.allSettled` と `client.messages.create` を直接使う形に各自で詰めてください。
 
 **構成の概要**: コーディネーターが 1 レスポンスで Search / Analysis Agent を並列発行 → 部分的成功と競合を構造化して合成エージェントへ。
 
@@ -855,7 +855,7 @@ function reconcileClaims(claims: Claim[]): SynthesizedClaim[] {
     }
   })
 
-  // ❌ Anti-pattern: const winner = vs[0]  // 任意選択 → provenance 消失
+  // ❌ Anti-pattern: const winner = vs[0]  // 任意選択 → 出所情報の消失
 }
 ```
 
@@ -863,7 +863,7 @@ function reconcileClaims(claims: Claim[]): SynthesizedClaim[] {
 
 - `Promise.allSettled` を使うのは部分的成功を保つため。`Promise.all` だと 1 つの reject で全体が崩れる
 - `coverage_gaps` を合成エージェントに渡すと、レポートに「この観点は調べられなかった」を明示できる。ユーザーが意思決定の不確実性を認識できる
-- 競合データの解決を **コードでも LLM でもなく「読者」に委ねる** のは意図的。CCA-F が問う provenance 保持は「機械が選ぶ」を明示的に拒否する設計
+- 競合データの解決を **コードでも LLM でもなく「読者」に委ねる** のは意図的。CCA-F が問う出所情報の保持は「機械が選ぶ」を明示的に拒否する設計
 - `published_date` を必ず claim に含めるのは、新旧データの不一致と「ソースの正面衝突」を区別するため。古い記事 → 新しい記事 で値が変わるのは矛盾ではなく時系列差異
 
 </details>
