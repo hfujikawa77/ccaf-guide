@@ -100,6 +100,10 @@ See `docs/migration-rules.md` for the full HTML → MDX conversion table. Highli
 - Code blocks use fenced ` ```language ` syntax
 - Domain-specific tag/box components (custom CSS in original HTML) are intentionally **dropped** — Nextra theme is used as-is for MVP
 
+### Terminology
+
+See `docs/glossary.md` for canonical Japanese terminology and the rule for when prose should keep English (code-literal counterparts) vs use Japanese (no code counterpart).
+
 ### Content improvement process
 
 For any content cleanup touching more than ~5 files (terminology, accuracy, freshness, structural), follow the five-phase loop in `docs/improvement-loop.md` (Audit → Specify → Track → Implement → Verify). The loop applies equally to user-initiated work and the quarterly auto-refresh routine.
