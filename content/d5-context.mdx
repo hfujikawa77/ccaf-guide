@@ -39,14 +39,67 @@ import { Callout } from 'nextra/components'
 
 ## 5.2 エスカレーション設計
 
+エスカレーションは **「いつ」「何を」「どのように」** 人間に渡すかを設計する問題です。試験では「シナリオ X で最も適切なエスカレーション戦略は？」が頻出します。以下の 4 分類はタイミングで整理したものです。
+
+| 分類 | タイミング | 典型シナリオ | 引き継ぎ内容 |
+|---|---|---|---|
+| **即時** | 調査を先行させず即対応 | 顧客が人間を明示的に要求した・暴言・自殺予兆・法的請求の予告 | 元の発話・直前の会話履歴・顧客 ID |
+| **解決試行後** | エージェントが 1〜2 回試した上で進捗が出ない場合 | 複雑なリファンド計算で必要な情報が欠落・ツール失敗が連鎖 | 試した手順・各ステップの結果・残った不明点 |
+| **段階的** | 認識 → 解決試行 → 失敗 → エスカレーション、の順で踏む | 通常のサポート問い合わせがエージェントの能力を超えていることが判明 | 認識した問題・試したアプローチ・なぜ失敗したか |
+| **ポリシーギャップ** | エージェントの権限・ポリシーに例外が必要 | $500 超の返金、規約に明示されていない例外請求、新規ポリシー策定が必要なケース | 顧客の要求・該当する既存ポリシー・例外を許容すべき理由 |
+
 <Callout type="error" emoji="⚠️">
-**即座にエスカレーションすべき条件（試験頻出）**
+**即座にエスカレーションすべき 3 条件（試験頻出）**
 
 1. 顧客が人間エージェントを **明示的に要求した**（調査を先行させず即座に対応）
 2. ポリシーに **ギャップや例外が存在する**（複雑さだけでなくポリシーの曖昧さ）
 3. エージェントが **意味のある進捗を生み出せない**
 
 **センチメントスコアや自己報告型信頼スコアはエスカレーション基準として使えない**（複雑度と相関しない）
+</Callout>
+
+### 構造化引き継ぎプロトコル
+
+エスカレーション時にエージェントが人間オペレーターに渡す情報は、自然言語の要約ではなく **構造化された JSON** にすると、ハンドオフの取りこぼしが減ります。試験では「自由形式のサマリーで引き継ぎ」が誤答として出ます。
+
+```ts
+// ✅ 構造化引き継ぎペイロードの最小一式
+type EscalationHandoff = {
+  escalation_type: 'immediate' | 'after_attempt' | 'progressive' | 'policy_gap'
+  reason: string                              // なぜエスカレーションが必要か（1 文）
+  case_facts: {                               // transactional facts（圧縮しない）
+    customer_id: string
+    case_id: string
+    amounts?: { currency: string; value: number }[]
+    dates?: { kind: string; iso: string }[]
+  }
+  conversation_summary: string                // 直前 N ターンの要約（人間が読む用）
+  attempted_actions: {                        // 試したアクションと結果
+    action: string
+    result: 'success' | 'failure' | 'partial'
+    error?: { errorCategory: string; message: string }
+  }[]
+  policy_references: string[]                 // 関連ポリシー条項の ID
+  open_questions: string[]                    // 解決していない論点
+  suggested_next_action?: string              // エージェントの推奨（人間が override 可能）
+}
+
+// 即時エスカレーション例
+const immediate: EscalationHandoff = {
+  escalation_type: 'immediate',
+  reason: '顧客が "人間と話したい" と明示的に要求',
+  case_facts: { customer_id: 'cust_123', case_id: 'case_456' },
+  conversation_summary: '...',
+  attempted_actions: [],   // 即時は試行なし
+  policy_references: [],
+  open_questions: ['顧客の元の問い合わせ内容']
+}
+```
+
+<Callout type="warning" emoji="🔑">
+**引き継ぎ JSON は「圧縮対象外」**
+
+[5.4 コンテキスト圧縮戦略](#54-コンテキスト圧縮戦略) で扱う `case_facts` ブロックと、この `EscalationHandoff.case_facts` は **同じ思想**（金額・日付・ID は要約で失わない）です。長時間のセッションをまたいでエスカレーションする場合、`case_facts` を永続化しておくと、新しいオペレーター（あるいは新しいエージェントセッション）が文脈をゼロから再構築せずに引き継げます。
 </Callout>
 
 ## 5.3 マルチエージェントエラー伝播
