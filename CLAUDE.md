@@ -108,6 +108,10 @@ See `docs/glossary.md` for canonical Japanese terminology and the rule for when 
 
 For any content cleanup touching more than ~5 files (terminology, accuracy, freshness, structural), follow the five-phase loop in `docs/improvement-loop.md` (Audit → Specify → Track → Implement → Verify). The loop applies equally to user-initiated work and the quarterly auto-refresh routine.
 
+### Content coverage policy
+
+`docs/content-coverage.md` defines the mechanical "what each page must contain" rules used during the quarterly audit. Update it when adding/removing a coverage rule, not in chat.
+
 ### Disclaimer placement
 
 The unofficial-disclaimer copy must appear in:
