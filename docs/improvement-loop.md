@@ -34,6 +34,7 @@ Convert audit findings into a written policy in `docs/`. The policy must be:
 - **Verifiable** — each rule maps to a grep pattern or build check
 
 Existing policy docs in `docs/`:
+- `docs/glossary.md` — terminology
 - `docs/migration-rules.md` — HTML → MDX
 - `docs/architecture.md` — stack and rationale
 
