@@ -11,6 +11,7 @@ const meta: MetaRecord = {
     title: '試験ガイド'
   },
   academy: 'Anthropic Academy',
+  foundation: 'Foundation（前提知識）',
   scenarios: '6 つの試験シナリオ',
   '-- 5 ドメイン詳解': {
     type: 'separator',

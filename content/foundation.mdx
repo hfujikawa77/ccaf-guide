@@ -1,0 +1,113 @@
+---
+title: 'Foundation: Claude API・tool_use・コンテキストウィンドウの基礎'
+description: CCA-F の 5 ドメインに入る前に押さえるべき前提知識。Claude API の基本構造、tool_use の構文エラーと意味エラーの区別、コンテキストウィンドウの注意分散効果。
+---
+
+import { Callout } from 'nextra/components'
+
+# Foundation: 5 ドメインに入る前に
+
+CCA-F は **「Claude API・Claude Code・MCP の本番経験 6 ヶ月以上」** を推奨経験としています。実務で十分な経験があれば D1 から読み始めて構いませんが、独学で対策する場合は本ページの 3 つの前提知識（API 構造・tool_use のエラー区別・コンテキスト品質）を先に固めると以降のドメインが理解しやすくなります。
+
+<Callout type="info" emoji="📌">
+**このページの位置づけ**
+
+D1〜D5 はそれぞれ「アジェンティックループの設計」「ツール記述の境界線」「フックパターン」のように **特定の判断軸** を扱います。本ページはこれらの判断軸が前提とする **API レベルの語彙** を最小限に揃えるものです。試験そのものではなく、ドメインページを読みやすくするための足場です。
+</Callout>
+
+## F.1 Claude API の基本構造
+
+Claude API はステートレスな request-response モデルです。**会話履歴はクライアント側が保持して毎回送信** します（API 側にセッション概念はない）。
+
+```ts
+const response = await client.messages.create({
+  model: 'claude-opus-4-7',          // モデル ID（4.6 → 4.7 で更新あり）
+  max_tokens: 4096,
+  system: 'あなたは...',             // システムプロンプト（任意）
+  messages: [
+    { role: 'user', content: '...' },
+    { role: 'assistant', content: '...' },
+    { role: 'user', content: '...' }, // 過去のやりとりを毎回再送する
+  ],
+  tools: [...]                        // ツール定義（任意・後述）
+});
+
+// レスポンスの構造
+response.content       // ContentBlock[] — text や tool_use が並ぶ
+response.stop_reason   // "end_turn" | "tool_use" | "max_tokens" | "stop_sequence"
+response.usage         // 入出力トークン数
+```
+
+| フィールド | 役割 | 試験での頻出論点 |
+|---|---|---|
+| `messages` | 会話履歴。`role: 'user' \| 'assistant'` を交互に並べる | 会話履歴は API 側に保持されない。**毎ターン全履歴を再送する必要がある**。Agent SDK でサブエージェントを使う場合、この性質が「コンテキストは明示的に渡す」設計に直結する（→ [D1.4](/d1-agentic#14-サブエージェントへのコンテキスト渡し)） |
+| `system` | 役割や制約を指定するシステムプロンプト | ビジネスルールの強制には **不向き**（プロンプトには非ゼロの失敗率） |
+| `tools` | LLM が呼び出せるツールの JSON Schema 定義 | description が選択精度の唯一の主要機構 |
+| `stop_reason` | ループを継続すべきか終了すべきかの判断材料 | `tool_use` で継続、`end_turn` で終了。**自然言語判定は罠** |
+
+## F.2 `tool_use` の 2 種類のエラー
+
+Claude が `tool_use` ブロックを返すとき、JSON Schema バリデーションは **構文エラー（syntax）** を防ぎますが、**意味エラー（semantic）** は防ぎません。試験ではこの 2 種類の区別が複数の問題で問われます。
+
+| エラー種類 | 何が検出される | 何が検出されない |
+|---|---|---|
+| **構文エラー** | フィールド型不一致、required フィールド欠落、enum 値違反 | — |
+| **意味エラー** | — | line items の合計 ≠ 総額、日付が過去、商品 ID と顧客の組み合わせ矛盾 |
+
+```ts
+// ✅ JSON Schema で防げる構文エラーの例
+const schema = {
+  type: 'object',
+  properties: {
+    amount: { type: 'number' },
+    currency: { type: 'string', enum: ['USD', 'JPY', 'EUR'] }
+  },
+  required: ['amount', 'currency']
+};
+// → currency: "GBP" は enum 違反で拒否される
+
+// ❌ JSON Schema で防げない意味エラーの例
+{
+  "line_items": [{ "price": 100 }, { "price": 200 }],
+  "total": 500   // ← 構文的に valid だが合計が一致しない
+}
+// → ツール実行側でビジネスバリデーションが必須
+```
+
+<Callout type="warning" emoji="🔑">
+**意味エラーへの対処は構造化エラーで折り返す**
+
+意味エラーをツール側で検出したら、`{ isError: true, errorCategory: 'validation', message: 'line items の合計 (300) と total (500) が一致しません' }` のように構造化して返す。エラー結果は `tool_result` ブロックとして次の `messages.create` 呼び出しに含まれ、LLM はそれを見て修正された `tool_use` を生成する（**retry-with-error-feedback** パターン）。エラーメッセージを汎用化（`"Validation failed"` のみ）すると修正に必要な情報が欠ける。
+</Callout>
+
+## F.3 コンテキストウィンドウは「サイズ」ではなく「品質」
+
+Claude のコンテキストウィンドウは大きい（モデルにより 200K〜1M トークン）ですが、**サイズが大きいことと、注意品質が高いことは別の話** です。試験では「コンテキストを拡大して問題を解決」が誤答として頻出します。
+
+### 注意分散（attention dilution）
+
+長い入力に重要情報を埋め込むと、LLM がその情報を見落とす確率が上がります。特に「中間部分」が見落とされやすい現象は **Lost in the Middle** と呼ばれます（詳細は [D5.1](/d5-context#51-コンテキスト管理)）。
+
+| ❌ 罠 | ✅ 正解 |
+|---|---|
+| 「200K トークン入るからすべての文書を入れる」 | 関連フィールドのみにトリミング、または per-file 分割パスで処理 |
+| 「コンテキストウィンドウを拡大すれば矛盾が解消する」 | サイズ ≠ 注意品質。**マルチパスレビュー**（ファイル別 → 統合）で品質を担保 |
+| 「ツール出力の全 40 フィールドをそのまま渡す」 | 後続判断に必要な 5 フィールドだけ抽出してコンテキストに追加 |
+
+### コンテキストの 3 つの構成要素
+
+ドメインページで頻出する「コンテキスト管理」は、以下の 3 種類の情報を区別して扱うことを意味します。
+
+| 種類 | 例 | 圧縮の可否 |
+|---|---|---|
+| **Transactional facts** | 金額・日付・ID・顧客情報 | **不可**（要約で失われると判断不能） |
+| **Provenance（出所情報）** | source URL、公開日、抜粋 | **不可**（claim と source の対応が崩れる） |
+| **中間思考・全文ツール出力** | 試行錯誤、検討して採用しなかった選択肢、API レスポンスの未使用フィールド | **条件付きで可**（Scratchpad 退避や削除は安全。要約による圧縮は数値・固有名詞の精度劣化リスクあり） |
+
+詳細な圧縮戦略は [D5.4](/d5-context#54-コンテキスト圧縮戦略) で扱います。
+
+## 次に読むべきページ
+
+- [Domain 1: Agentic（最重要・配点 27%）](/d1-agentic) — アジェンティックループ・マルチエージェント設計
+- [Domain 2: Tool / MCP](/d2-tool-mcp) — ツール記述設計と構造化エラー
+- [合格の 3 原則](/) — 試験を通底する 3 つの判断軸
