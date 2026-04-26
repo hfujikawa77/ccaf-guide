@@ -26,7 +26,7 @@ import { Callout } from 'nextra/components'
 
 - ツール description が最小限（"Retrieves information" 等）
 - 汎用エラー "Operation failed" を返す（構造化情報なし）
-- タイムアウト（access failure）を empty success として返す
+- タイムアウト（access failure）を「成功・結果は空」として返す
 - 1 エージェントに 18 個のツールを与える
 - 合成エージェントに Web 検索ツールを与える（専門外・誤用の原因）
 - チーム共有設定を `~/.claude.json` に置く（個人スコープ）
@@ -53,19 +53,19 @@ import { Callout } from 'nextra/components'
 - 情報が存在しないかもしれないフィールドを required にする（ハルシネーション (hallucination) の原因）
 - pre-merge ブロッキングチェックに Batch API を使う（SLA 保証なし）
 - 情報がそもそも存在しない場合にリトライを繰り返す（効果なし）
-- 大量ファイルを一度にレビューさせる（attention dilution）
+- 大量ファイルを一度にレビューさせる（注意分散; attention dilution）
 - コード生成インスタンスに自分でレビューさせる（認知バイアス）
 - **`tool_use` を含むワークフローを Batch に投げる（バッチではエージェンティックループが展開できない）**
 
 ## Domain 5: Context
 
-- 感情スコアでエスカレーション判断する（複雑度と無相関）
+- センチメントスコアでエスカレーション判断する（複雑度と無相関）
 - 自己報告型信頼スコアでエスカレーション判断する（キャリブレーション不良）
 - ツール出力を全フィールドそのままコンテキストに蓄積する
-- エラーを empty success として返す
+- エラーを「成功・結果は空」として返す
 - 単一サブエージェントの失敗でワークフロー全体を終了させる
 - 複数ソースが競合する場合に一方を任意選択する（出所情報 (provenance) が消える）
-- 「大きなコンテキストウィンドウ」で attention dilution を解決しようとする
+- 「大きなコンテキストウィンドウ」で注意分散を解決しようとする
 - **`/compact` に頼って transactional facts（金額・ID・日付）を要約に流す**
 - **permission error をリトライする（リトライ可能タイプではない）**
 - **「情報がドキュメントに存在しない」ケースで何度もリトライする**
@@ -79,7 +79,7 @@ import { Callout } from 'nextra/components'
 4. プログラマティック強制 vs プロンプト指示の判断基準
 5. Batch API が適さないワークフロー（ブロッキング・SLA 必要・**エージェンティックループ含む**）
 6. サブエージェントはコンテキストを自動継承しない（[D1.4](/d1-agentic#14-サブエージェントへのコンテキスト渡し)）
-7. 感情スコアはエスカレーション基準として使えない
+7. センチメントスコアはエスカレーション基準として使えない
 8. **サブエージェント独立タスクは 1 レスポンスで並列実行（[D1.3](/d1-agentic#13-並列-vs-順次サブエージェント実行)）**
 9. **`allowed-tools` はブロック機能ではなく事前承認機能**（実際にブロックするのは `permissions.deny`）
 10. **Agent SDK Hooks（[D1.5](/d1-agentic#15-agent-sdk-フックパターン)）と Claude Code Hooks（[D3.3](/d3-claude-code#33-claude-code-フックlifecycle-hooks)）は別物**
