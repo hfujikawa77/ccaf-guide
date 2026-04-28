@@ -12,7 +12,8 @@
     "typecheck": "tsc --noEmit",
     "preview": "npx serve out",
     "preview:cf": "wrangler dev",
-    "deploy": "wrangler deploy"
+    "deploy": "wrangler deploy",
+    "changelog": "git-cliff --include-path 'content/**' -o CHANGELOG.md"
   },
   "dependencies": {
     "next": "15.5.15",
@@ -25,6 +26,7 @@
     "@types/node": "22.10.5",
     "@types/react": "19.0.7",
     "@types/react-dom": "19.0.3",
+    "git-cliff": "2.13.1",
     "pagefind": "1.5.2",
     "typescript": "5.7.3",
     "wrangler": "4.85.0"
