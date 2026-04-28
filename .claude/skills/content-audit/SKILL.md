@@ -39,8 +39,8 @@ Reference prior audits in `docs/audits/` (if any) when constructing Q2's
 
 Once scope is set, enter Plan Mode (read-only). Read
 @docs/phases/01-discover.md and run grep sweeps for the chosen scope.
-**Delegate large grep sweeps to a subagent** (per the Phase 1 doc) so the
-main context stays clean for synthesis.
+Large grep sweeps are delegated to the `discover-sweep` sub-agent
+(see `.claude/agents/discover-sweep.md`).
 
 Report findings as a table per surfaced problem class:
 `file:line | variant | count | surprises`.
