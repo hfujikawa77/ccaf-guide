@@ -5,7 +5,7 @@ Unofficial study guide for the **Claude Certified Architect – Foundations (CCA
 > **Disclaimer** — This is an unofficial study guide. Not affiliated with or endorsed by Anthropic, PBC.
 > 本サイトは Anthropic, PBC と関係のない非公式の学習ガイドです。
 
-Live site: [ccaf.dev](https://ccaf.dev) *(deploys after Step 7)*
+Live site: [ccaf.dev](https://ccaf.dev)
 
 Recent changes: [`CHANGELOG.md`](./CHANGELOG.md) (auto-generated from Conventional Commits via `git-cliff`).
 
@@ -13,8 +13,7 @@ Recent changes: [`CHANGELOG.md`](./CHANGELOG.md) (auto-generated from Convention
 
 - **Framework**: [Nextra](https://nextra.site) v4 — Next.js 15 App Router + MDX
 - **Hosting**: Cloudflare Workers + Static Assets (`output: 'export'` → `out/` served via `wrangler.jsonc`)
-- **Search**: FlexSearch (Nextra default; Japanese tokenizer planned for Step 5)
-- **Analytics**: Cloudflare Web Analytics
+- **Search**: Pagefind (Nextra v4 default; native CJK segmentation)
 - **Domain**: ccaf.dev (Cloudflare Registrar)
 
 See [`docs/architecture.md`](./docs/architecture.md) for the full rationale.
