@@ -76,6 +76,17 @@ gh api repos/yokoto/ccaf-guide/branches/main/protection \
 
 If missing, register via Settings → Branches → Branch protection rules → `main` → Require status checks → add `check-linked-issue`. The check name appears in the dropdown after the workflow has run at least once.
 
+### Claude Code settings
+
+Two files live under `.claude/`:
+
+- **`.claude/settings.json`** (committed) — team-shared pre-approval list. Anything every contributor needs to do routine work (typecheck, build, `gh pr/repo` reads, `npx git-cliff`, the verify-phase `/tmp/*.log` reads, and `WebFetch` for vendor doc domains used in research) belongs here. Adding to this file is a normal PR.
+- **`.claude/settings.local.json`** (gitignored via `~/.config/git/ignore` pattern `**/.claude/settings.local.json`) — personal-only entries: absolute paths under a specific user's home directory, machine-specific tools, in-progress experiments. Never commit and never reference from `settings.json`.
+
+Hard rule: **absolute paths to a user's home directory must never appear in `settings.json`**. They make the shared file useless on every other machine and tend to encode personal sensitive paths. If in doubt, put it in `settings.local.json` first; promote it later if a second contributor needs it.
+
+This split is the same trap `content/d3-claude-code.mdx` §3.1 calls out as a quiz question — putting team rules in `~/.claude/CLAUDE.md` (or in `settings.local.json`) means a fresh clone never inherits them.
+
 ### Commits
 
 Conventional Commits (`feat:`, `fix:`, `chore:`, `docs:`, `style:`, `refactor:`, `test:`, `build:`, `ci:`).

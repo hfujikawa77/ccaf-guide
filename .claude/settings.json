@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(npm install *)",
+      "Bash(npx git-cliff *)",
+      "Bash(gh repo *)",
+      "Bash(gh pr *)",
+      "Bash(echo \"TC=$?\")",
+      "Bash(echo \"BUILD=$?\")",
+      "Read(//private/tmp/**)",
+      "WebFetch(domain:ccaf.dev)",
+      "WebFetch(domain:keepachangelog.com)",
+      "WebFetch(domain:git-cliff.org)",
+      "WebFetch(domain:www.conventionalcommits.org)",
+      "WebFetch(domain:docs.anthropic.com)",
+      "WebFetch(domain:code.claude.com)",
+      "WebFetch(domain:platform.openai.com)",
+      "WebFetch(domain:docs.github.com)",
+      "WebFetch(domain:developers.cloudflare.com)",
+      "WebFetch(domain:docs.aws.amazon.com)"
+    ]
+  }
+}
