@@ -9,7 +9,7 @@
 #
 # Why not also content/**.mdx: tsc --noEmit doesn't semantically validate MDX.
 # Including MDX paths here would create a false sense of safety. The build-time
-# gate (Phase 5 of docs/improvement-loop.md) stays as the MDX validator.
+# gate (docs/phases/05-verify.md) stays as the MDX validator.
 
 set -euo pipefail
 

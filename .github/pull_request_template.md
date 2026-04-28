@@ -1,8 +1,8 @@
 <!--
 Issue-first workflow: every PR must reference an existing open issue.
 The `Closes #` line below is required and is mechanically checked by
-.github/workflows/issue-first-check.yml. See docs/improvement-loop.md
-(Cardinal rule) and CLAUDE.md (Issue-first workflow).
+.github/workflows/issue-first-check.yml. See CLAUDE.md (Issue-first
+workflow) and docs/phases/03-plan.md.
 -->
 
 Closes #
