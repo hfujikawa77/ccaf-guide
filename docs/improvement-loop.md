@@ -4,6 +4,12 @@ How to improve `content/*.mdx` quality (terminology, accuracy, freshness, struct
 
 This is the harness's autonomous-improvement contract: the same process applies whether the work is user-initiated, triggered by the quarterly refresh routine, or surfaced by an external review.
 
+## Cardinal rule
+
+**Every change starts with a GitHub issue, and the resulting PR opens with `Closes #N` linking to it.** No exceptions: chat-only Discover/Design does not satisfy this rule. Phase 3 (Plan) is where chat thinking becomes a versioned artifact; if you skip it, the loop is broken.
+
+This rule is mechanically enforced by `.github/workflows/issue-first-check.yml`, which fails any PR whose body does not reference an existing open issue. Bot PRs (Dependabot, Renovate) are exempt by actor name.
+
 ## When to apply
 
 - User-reported inconsistency that may extend beyond the reported example
@@ -11,7 +17,7 @@ This is the harness's autonomous-improvement contract: the same process applies 
 - Anthropic / Claude product updates requiring terminology or content alignment
 - Pre-release validation before adding a new exam-domain page
 
-For trivial single-file fixes (typos, a missing comma), skip this loop and just edit + commit.
+For trivial single-file fixes (typos, a missing comma), the per-phase effort scales down — Phase 1 (Discover) may be a single grep, Phase 2 (Design) may be skipped if no rule is implied — but **the issue + PR + `Closes #N` chain is non-negotiable** (see Cardinal rule).
 
 ## The six-phase loop
 

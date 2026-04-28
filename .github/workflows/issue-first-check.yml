@@ -1,0 +1,41 @@
+name: issue-first-check
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+
+jobs:
+  check-linked-issue:
+    runs-on: ubuntu-latest
+    if: github.actor != 'dependabot[bot]' && github.actor != 'renovate[bot]'
+    steps:
+      - name: Verify PR links to an existing open issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          # Use GitHub's own closing-keyword parser via closingIssuesReferences.
+          # This handles all keyword variants (close/closes/closed, fix/fixes/fixed,
+          # resolve/resolves/resolved), the optional colon form ("Closes: #N"),
+          # and skips references to non-existent issues automatically. We then
+          # filter to OPEN issues to enforce that the issue exists at PR creation.
+          LINKED_OPEN=$(gh pr view "$PR_NUMBER" --repo "$REPO" \
+            --json closingIssuesReferences \
+            --jq '[.closingIssuesReferences[] | select(.state == "OPEN") | .number] | join(", ")')
+
+          if [ -z "${LINKED_OPEN:-}" ]; then
+            echo "::error::This PR is not linked to any open issue."
+            echo "::error::Add 'Closes #N' (or Fixes / Resolves #N) to the PR body, where #N is an existing open issue created before this branch was started."
+            echo "::error::See docs/improvement-loop.md (Cardinal rule) and CLAUDE.md (Issue-first workflow)."
+            exit 1
+          fi
+
+          echo "OK: PR linked to open issue(s): #$LINKED_OPEN"
