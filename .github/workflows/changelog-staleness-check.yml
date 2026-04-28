@@ -1,0 +1,41 @@
+name: changelog-staleness-check
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  check-changelog:
+    runs-on: ubuntu-latest
+    steps:
+      # git-cliff walks the full commit history; the default shallow checkout
+      # (fetch-depth: 1) makes it produce an empty changelog and falsely report
+      # drift on every PR.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Regenerate CHANGELOG.md and check for drift
+        run: |
+          set -euo pipefail
+
+          npm run changelog
+
+          if ! git diff --exit-code -- CHANGELOG.md; then
+            echo "::error::CHANGELOG.md is out of sync with the commit history."
+            echo "::error::Run \`npm run changelog\` locally, commit the result, and push again."
+            echo "::error::See CLAUDE.md (Changelog) for the operating rule."
+            exit 1
+          fi
+
+          echo "OK: CHANGELOG.md is up to date."
