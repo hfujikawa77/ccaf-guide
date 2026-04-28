@@ -20,5 +20,15 @@
       "WebFetch(domain:developers.cloudflare.com)",
       "WebFetch(domain:docs.aws.amazon.com)"
     ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          { "type": "command", "command": ".claude/hooks/typecheck-on-tsx-edit.sh" }
+        ]
+      }
+    ]
   }
 }

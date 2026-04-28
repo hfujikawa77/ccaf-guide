@@ -87,6 +87,8 @@ Hard rule: **absolute paths to a user's home directory must never appear in `set
 
 This split is the same trap `content/d3-claude-code.mdx` §3.1 calls out as a quiz question — putting team rules in `~/.claude/CLAUDE.md` (or in `settings.local.json`) means a fresh clone never inherits them.
 
+`.claude/settings.json` also wires a `PostToolUse` hook (`.claude/hooks/typecheck-on-tsx-edit.sh`) on `Edit|Write|MultiEdit`. The hook runs `npm run typecheck` only when the edited path matches `app/**/*.{ts,tsx}`, `next.config.mjs`, or `mdx-components.tsx`; on failure it exits non-zero, surfacing the error back to the agent. Output is captured to `/tmp/typecheck-hook.log`. MDX files are intentionally *not* in the path filter — `tsc --noEmit` does not validate MDX semantics, so the build-time gate in Phase 5 of `docs/improvement-loop.md` stays as the MDX validator. This is the canonical "保存後に走らせたい処理は `PostToolUse` hook" pattern from `content/d3-claude-code.mdx` §3.3 applied to the repo itself.
+
 ### Commits
 
 Conventional Commits (`feat:`, `fix:`, `chore:`, `docs:`, `style:`, `refactor:`, `test:`, `build:`, `ci:`).
