@@ -112,6 +112,18 @@ For any content cleanup touching more than ~5 files (terminology, accuracy, fres
 
 `docs/content-coverage.md` defines the mechanical "what each page must contain" rules used during the quarterly audit. Update it when adding/removing a coverage rule, not in chat.
 
+### Changelog
+
+`CHANGELOG.md` is a **derived artifact** auto-generated from Conventional Commits via `git-cliff`. The single source of truth is the git log; the file exists only so readers don't have to run a tool to see what changed.
+
+Operating rules:
+
+- **Source of truth**: git log filtered to `content/**` (configured in `cliff.toml`).
+- **Surfaced types**: `feat:` → Added, `fix:` → Fixed, `refactor:` / `perf:` → Changed. All other types (`docs:`, `test:`, `chore:`, `style:`, `ci:`, `build:`) are dropped — they are not user-facing.
+- **When to regenerate**: any PR that adds a `feat(content)`, `fix(content)`, `refactor(content)`, or `perf(content)` commit must run `npm run changelog` and stage the updated `CHANGELOG.md` in the same PR. Do not hand-edit the file.
+- **Cutting a release**: when `[Unreleased]` has accumulated enough to bundle (typically aligned with the quarterly auto-refresh), tag the current `HEAD` with `git tag vYYYY-MM-DD` and re-run `npm run changelog` — the tag becomes a dated section header.
+- **Merge-commit warnings** from `git-cliff` (`N commit(s) skipped`) are harmless and refer to PR merge commits, which carry no conventional type. Real PR content is captured via the underlying commits on the branch.
+
 ### Disclaimer placement
 
 The unofficial-disclaimer copy must appear in:
