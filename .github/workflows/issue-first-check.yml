@@ -18,18 +18,34 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-          REPO: ${{ github.repository }}
+          REPO_OWNER: ${{ github.repository_owner }}
+          REPO_NAME: ${{ github.event.repository.name }}
         run: |
           set -euo pipefail
 
           # Use GitHub's own closing-keyword parser via closingIssuesReferences.
           # This handles all keyword variants (close/closes/closed, fix/fixes/fixed,
-          # resolve/resolves/resolved), the optional colon form ("Closes: #N"),
-          # and skips references to non-existent issues automatically. We then
-          # filter to OPEN issues to enforce that the issue exists at PR creation.
-          LINKED_OPEN=$(gh pr view "$PR_NUMBER" --repo "$REPO" \
-            --json closingIssuesReferences \
-            --jq '[.closingIssuesReferences[] | select(.state == "OPEN") | .number] | join(", ")')
+          # resolve/resolves/resolved) and the optional colon form ("Closes: #N"),
+          # and only returns references to issues that actually exist. We use the
+          # GraphQL endpoint (not `gh pr view --json`) because the latter's flat
+          # schema does not expose the `state` field on nested issue references.
+          RESPONSE=$(gh api graphql \
+            -F owner="$REPO_OWNER" \
+            -F repo="$REPO_NAME" \
+            -F pr="$PR_NUMBER" \
+            -f query='
+              query($owner: String!, $repo: String!, $pr: Int!) {
+                repository(owner: $owner, name: $repo) {
+                  pullRequest(number: $pr) {
+                    closingIssuesReferences(first: 50) {
+                      nodes { number state }
+                    }
+                  }
+                }
+              }')
+
+          LINKED_OPEN=$(printf '%s' "$RESPONSE" \
+            | jq -r '[.data.repository.pullRequest.closingIssuesReferences.nodes[] | select(.state == "OPEN") | .number] | join(", ")')
 
           if [ -z "${LINKED_OPEN:-}" ]; then
             echo "::error::This PR is not linked to any open issue."
