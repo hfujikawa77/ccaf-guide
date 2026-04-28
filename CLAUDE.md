@@ -60,6 +60,22 @@ npm run deploy       # wrangler deploy — manual deploy bypassing Workers Build
 
 ## Conventions
 
+### Issue-first workflow
+
+Every PR in this repo opens with `Closes #N`, where `#N` is an existing **open** issue created **before** the branch was started. Do not create the issue retroactively after opening the PR. Chat-only Discover/Design does not satisfy this rule — the issue is the versioned artifact, not the conversation. See `docs/improvement-loop.md` (Cardinal rule) for the why.
+
+This is mechanically enforced by `.github/workflows/issue-first-check.yml`. The GHA fails the PR if no `Closes/Fixes/Resolves #N` reference is found in the body, or if the referenced issue does not exist or is not open. Bot PRs (`dependabot[bot]`, `renovate[bot]`) are exempt.
+
+The check must be registered as a required status check on `main` branch protection. Verify with:
+
+```bash
+gh api repos/yokoto/ccaf-guide/branches/main/protection \
+  --jq '.required_status_checks.contexts[]?' 2>/dev/null | grep -i 'check-linked-issue' \
+  || echo "WARNING: issue-first check is not a required check on main"
+```
+
+If missing, register via Settings → Branches → Branch protection rules → `main` → Require status checks → add `check-linked-issue`. The check name appears in the dropdown after the workflow has run at least once.
+
 ### Commits
 
 Conventional Commits (`feat:`, `fix:`, `chore:`, `docs:`, `style:`, `refactor:`, `test:`, `build:`, `ci:`).
