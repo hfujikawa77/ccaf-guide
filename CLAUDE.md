@@ -76,6 +76,18 @@ gh api repos/yokoto/ccaf-guide/branches/main/protection \
 
 If missing, register via Settings → Branches → Branch protection rules → `main` → Require status checks → add `check-linked-issue`. The check name appears in the dropdown after the workflow has run at least once.
 
+### Issue and PR body length
+
+All issues and PRs use the standard structure (issue bodies: Background / Decisions / Acceptance criteria / Skipped items; PR bodies: see `.github/pull_request_template.md`). Every section is always required; length scales with the change scope. The section's *presence* is the signal that the consideration happened — empty sections are not allowed.
+
+For sections that may genuinely have nothing to add, use one of these canonical empty forms (one per section so a future grep can audit consistency):
+
+- Issue Decisions empty form: `None — single obvious approach.`
+- Issue Skipped items empty form: `None considered.`
+- PR Test plan empty form: `None — Verification gates above are sufficient.`
+
+Other sections (Background, Acceptance criteria, Summary, Verification) always carry at least one substantive line. Verbose prose is always allowed; this rule lowers the floor on overhead, not the ceiling.
+
 ### Claude Code settings
 
 Two files live under `.claude/`:
