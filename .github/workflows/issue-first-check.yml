@@ -50,7 +50,7 @@ jobs:
           if [ -z "${LINKED_OPEN:-}" ]; then
             echo "::error::This PR is not linked to any open issue."
             echo "::error::Add 'Closes #N' (or Fixes / Resolves #N) to the PR body, where #N is an existing open issue created before this branch was started."
-            echo "::error::See docs/improvement-loop.md (Cardinal rule) and CLAUDE.md (Issue-first workflow)."
+            echo "::error::See CLAUDE.md (Issue-first workflow)."
             exit 1
           fi
 

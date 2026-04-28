@@ -62,7 +62,7 @@ npm run deploy       # wrangler deploy — manual deploy bypassing Workers Build
 
 ### Issue-first workflow
 
-Every PR in this repo opens with `Closes #N`, where `#N` is an existing **open** issue created **before** the branch was started. Do not create the issue retroactively after opening the PR. Chat-only Discover/Design does not satisfy this rule — the issue is the versioned artifact, not the conversation. See `docs/improvement-loop.md` (Cardinal rule) for the why.
+Every PR in this repo opens with `Closes #N`, where `#N` is an existing **open** issue created **before** the branch was started. Do not create the issue retroactively after opening the PR. Chat-only Discover/Design does not satisfy this rule — the issue is the versioned artifact, not the conversation. Skipping the issue collapses Plan into chat, which doesn't survive context resets; the loop breaks.
 
 This is mechanically enforced by `.github/workflows/issue-first-check.yml`. The GHA fails the PR if no `Closes/Fixes/Resolves #N` reference is found in the body, or if the referenced issue does not exist or is not open. Bot PRs (`dependabot[bot]`, `renovate[bot]`) are exempt.
 
@@ -87,7 +87,7 @@ Hard rule: **absolute paths to a user's home directory must never appear in `set
 
 This split is the same trap `content/d3-claude-code.mdx` §3.1 calls out as a quiz question — putting team rules in `~/.claude/CLAUDE.md` (or in `settings.local.json`) means a fresh clone never inherits them.
 
-`.claude/settings.json` also wires a `PostToolUse` hook (`.claude/hooks/typecheck-on-tsx-edit.sh`) on `Edit|Write|MultiEdit`. The hook runs `npm run typecheck` only when the edited path matches `app/**/*.{ts,tsx}`, `next.config.mjs`, or `mdx-components.tsx`; on failure it exits non-zero, surfacing the error back to the agent. Output is captured to `/tmp/typecheck-hook.log`. MDX files are intentionally *not* in the path filter — `tsc --noEmit` does not validate MDX semantics, so the build-time gate in Phase 5 of `docs/improvement-loop.md` stays as the MDX validator. This is the canonical "保存後に走らせたい処理は `PostToolUse` hook" pattern from `content/d3-claude-code.mdx` §3.3 applied to the repo itself.
+`.claude/settings.json` also wires a `PostToolUse` hook (`.claude/hooks/typecheck-on-tsx-edit.sh`) on `Edit|Write|MultiEdit`. The hook runs `npm run typecheck` only when the edited path matches `app/**/*.{ts,tsx}`, `next.config.mjs`, or `mdx-components.tsx`; on failure it exits non-zero, surfacing the error back to the agent. Output is captured to `/tmp/typecheck-hook.log`. MDX files are intentionally *not* in the path filter — `tsc --noEmit` does not validate MDX semantics, so the build-time gate in [`docs/phases/05-verify.md`](docs/phases/05-verify.md) stays as the MDX validator. This is the canonical "保存後に走らせたい処理は `PostToolUse` hook" pattern from `content/d3-claude-code.mdx` §3.3 applied to the repo itself.
 
 ### Commits
 
@@ -135,7 +135,7 @@ See `docs/glossary.md` for canonical Japanese terminology and the rule for when 
 
 ### Content improvement process
 
-For any content cleanup touching more than ~5 files (terminology, accuracy, freshness, structural), follow the six-phase loop in `docs/improvement-loop.md` (Discover → Design → Plan → Implement → Verify → Merge). The loop applies equally to user-initiated work and the quarterly auto-refresh routine.
+For any content cleanup touching more than ~5 files (terminology, accuracy, freshness, structural), follow the six-phase loop in [`docs/phases/`](docs/phases/) (Discover → Design → Plan → Implement → Verify → Merge); start with `docs/phases/README.md`. The loop applies equally to user-initiated work and the quarterly auto-refresh routine.
 
 ### Content coverage policy
 
