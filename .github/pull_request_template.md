@@ -24,4 +24,7 @@ Closes #
 
 ## Test plan
 
-<!-- Bulleted markdown checklist of what was tested or needs testing. -->
+<!-- Bulleted markdown checklist of what was tested or needs testing.
+     If Verification gates above fully cover the change, write this
+     section as: "None — Verification gates above are sufficient."
+     See CLAUDE.md § Issue and PR body length. -->
