@@ -2,7 +2,7 @@
 
 *Read-only investigation of current state, before any change is proposed.*
 
-Survey the actual state across all content files **before proposing changes**. Use `grep -rn` (not full-file reads) to keep the survey cheap. Delegate large grep sweeps to a subagent so the main context stays clean.
+Survey the actual state across all content files **before proposing changes**. Use `grep -rn` (not full-file reads) to keep the survey cheap. Large grep sweeps are delegated to the `discover-sweep` sub-agent (see `.claude/agents/discover-sweep.md`).
 
 For each suspected issue, report:
 - Files + line numbers
